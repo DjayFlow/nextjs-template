@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Section, Cell, List } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { useHapticFeedback } from '@telegram-apps/sdk-react';
@@ -18,7 +18,7 @@ export default function Home() {
   const spin = () => {
     if (spinning) return;
     
-    // De '?' zorgt ervoor dat het niet crasht als de telefoon geen trilling heeft
+    // De '?' zorgt ervoor dat Vercel niet crasht
     haptic?.impactOccurred('medium');
     setSpinning(true);
     
@@ -63,7 +63,7 @@ export default function Home() {
 
           <div style={{ display: 'flex', gap: '12px', backgroundColor: '#111', padding: '25px', borderRadius: '25px', border: '4px solid #222', boxShadow: 'inset 0 0 30px #000', marginTop: '40px' }}>
             {reels.map((symbol, i) => (
-              <div key={i} style={{ fontSize: '42px', width: '70px', height: '90px', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', border: '1px solid #333' }}>
+              <div key={i} style={{ fontSize: '42px', width: '70px', height: '100px', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', border: '1px solid #333' }}>
                 {symbol}
               </div>
             ))}
