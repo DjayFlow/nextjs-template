@@ -8,11 +8,11 @@ export default function Home() {
   return (
     <Page back={false}>
       <List>
-        {/* De Header met jouw Logo */}
+        {/* De Header met de uil die nu WEL moet laden */}
         <Section>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', gap: '10px' }}>
             <img 
-              src="/apple-touch-icon.png.jpg" 
+              src="/apple-touch-icon.png.jpg" // Hier hebben we de .jpg toegevoegd!
               alt="Unbreakable Owl Logo" 
               style={{ width: '120px', height: '120px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,122,255,0.3)' }} 
             />
