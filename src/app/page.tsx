@@ -1,61 +1,46 @@
 'use client';
 
 import { Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
-import { useTranslations } from 'next-intl';
-
-import { Link } from '@/components/Link/Link';
-import { LocaleSwitcher } from '@/components/LocaleSwitcher/LocaleSwitcher';
+import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
-import tonSvg from './_assets/ton.svg';
-
 export default function Home() {
-  const t = useTranslations('i18n');
-
   return (
     <Page back={false}>
       <List>
-        <Section
-          header="Features"
-          footer="You can use these pages to learn more about features, provided by Telegram Mini Apps and other useful projects"
-        >
-          <Link href="/ton-connect">
-            <Cell
-              before={
-                <Image
-                  src={tonSvg.src}
-                  style={{ backgroundColor: '#007AFF' }}
-                  alt="TON Logo"
-                />
-              }
-              subtitle="Connect your TON wallet"
-            >
-              TON Connect
-            </Cell>
-          </Link>
+        {/* De Header met jouw Logo */}
+        <Section>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
+            <img 
+              src="/apple-touch-icon.png" 
+              alt="Unbreakable Owl Logo" 
+              style={{ width: '100px', height: '100px', borderRadius: '20px', marginBottom: '10px' }} 
+            />
+            <h1 style={{ margin: 0 }}>Unbreakable Owl</h1>
+            <p style={{ color: 'gray' }}>The ultimate blockchain challenge</p>
+          </div>
         </Section>
-        <Section
-          header="Application Launch Data"
-          footer="These pages help developer to learn more about current launch information"
-        >
-          <Link href="/init-data">
-            <Cell subtitle="User data, chat information, technical data">
-              Init Data
-            </Cell>
-          </Link>
-          <Link href="/launch-params">
-            <Cell subtitle="Platform identifier, Mini Apps version, etc.">
-              Launch Parameters
-            </Cell>
-          </Link>
-          <Link href="/theme-params">
-            <Cell subtitle="Telegram application palette information">
-              Theme Parameters
-            </Cell>
-          </Link>
+
+        {/* Wallet Sectie */}
+        <Section header="Account" footer="Connect your TON wallet to start playing.">
+          <Cell>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0' }}>
+              <TonConnectButton />
+            </div>
+          </Cell>
         </Section>
-        <Section header={t('header')} footer={t('footer')}>
-          <LocaleSwitcher />
+
+        {/* Game Menu */}
+        <Section header="Menu">
+          <Cell 
+            before={<Image src="/apple-touch-icon.png" width={24} height={24}/>}
+            subtitle="Coming soon: Battle for the Nest"
+          >
+            Start Game
+          </Cell>
+          <Cell subtitle="Global Ranking">
+            Leaderboard
+          </Cell>
         </Section>
       </List>
     </Page>
