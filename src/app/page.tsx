@@ -3,16 +3,17 @@
 import { Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
+import { Link } from '@/components/Link/Link'; // Dit is de verbinding naar je game!
 
 export default function Home() {
   return (
     <Page back={false}>
       <List>
-        {/* De Header met de uil die nu WEL moet laden */}
+        {/* De Header met je logo */}
         <Section>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', gap: '10px' }}>
             <img 
-              src="/apple-touch-icon.png.jpg" // Hier hebben we de .jpg toegevoegd!
+              src="/apple-touch-icon.png.jpg" 
               alt="Unbreakable Owl Logo" 
               style={{ width: '120px', height: '120px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,122,255,0.3)' }} 
             />
@@ -30,14 +31,17 @@ export default function Home() {
           </Cell>
         </Section>
 
-        {/* Game Menu */}
+        {/* Game Menu - Hier zit nu de werkende link naar je game! */}
         <Section header="Menu">
-          <Cell 
-            before={<Image src="/apple-touch-icon.png.jpg" width={32} height={32} style={{borderRadius: '8px'}}/>}
-            subtitle="Coming soon: Battle for the Nest"
-          >
-            Start Game
-          </Cell>
+          <Link href="/launch">
+            <Cell 
+              before={<Image src="/apple-touch-icon.png.jpg" width={32} height={32} style={{borderRadius: '8px'}}/>}
+              subtitle="Battle for the Nest: Online"
+              expandable
+            >
+              Start Game
+            </Cell>
+          </Link>
           <Cell subtitle="Global Ranking">
             Leaderboard
           </Cell>
