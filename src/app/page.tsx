@@ -3,7 +3,7 @@
 import { Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
-import { Link } from '@/components/Link/Link'; // De verbinding naar je game
+import { Link } from '@/components/Link/Link'; 
 
 export default function Home() {
   return (
@@ -31,13 +31,12 @@ export default function Home() {
           </Cell>
         </Section>
 
-        {/* Game Menu - Nu met de werkende link naar je game! */}
+        {/* Game Menu - De verbinding naar launch/page.tsx */}
         <Section header="Menu">
           <Link href="/launch">
             <Cell 
               before={<Image src="/apple-touch-icon.png.jpg" width={32} height={32} style={{borderRadius: '8px'}}/>}
               subtitle="Battle for the Nest: Online"
-              expandable
             >
               Start Game
             </Cell>
