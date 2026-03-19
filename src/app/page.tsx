@@ -1,6 +1,6 @@
 'use client';
 
-import { Section, Cell, List } from '@telegram-apps/telegram-ui';
+import { Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -10,14 +10,14 @@ export default function Home() {
       <List>
         {/* De Header met jouw Logo */}
         <Section>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', gap: '15px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px', gap: '10px' }}>
             <img 
-              src="/owl-avatar.png" // De foto die je net hebt geüpload
+              src="/apple-touch-icon.png.jpg" 
               alt="Unbreakable Owl Logo" 
-              style={{ width: '120px', height: '120px', borderRadius: '50%', border: '4px solid #fff', boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }} 
+              style={{ width: '120px', height: '120px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,122,255,0.3)' }} 
             />
-            <h1 style={{ margin: 0, textAlign: 'center' }}>Unbreakable Owl</h1>
-            <p style={{ color: 'gray', textAlign: 'center', margin: 0 }}>The ultimate blockchain challenge</p>
+            <h1 style={{ margin: 0, fontSize: '24px' }}>Unbreakable Owl</h1>
+            <p style={{ color: 'gray', margin: 0 }}>The ultimate blockchain challenge</p>
           </div>
         </Section>
 
@@ -32,7 +32,10 @@ export default function Home() {
 
         {/* Game Menu */}
         <Section header="Menu">
-          <Cell subtitle="Battle for the Nest (Launching Soon)">
+          <Cell 
+            before={<Image src="/apple-touch-icon.png.jpg" width={32} height={32} style={{borderRadius: '8px'}}/>}
+            subtitle="Coming soon: Battle for the Nest"
+          >
             Start Game
           </Cell>
           <Cell subtitle="Global Ranking">
