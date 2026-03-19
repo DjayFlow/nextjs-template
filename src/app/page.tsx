@@ -1,7 +1,7 @@
-          'use client';
+'use client';
 
 import { useState } from 'react';
-import { Section, Cell, List, Button } from '@telegram-apps/telegram-ui';
+import { Section, Cell, List } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { useHapticFeedback } from '@telegram-apps/sdk-react';
 import { Page } from '@/components/Page';
@@ -10,7 +10,7 @@ export default function Home() {
   const [points, setPoints] = useState(0);
   const [showGame, setShowGame] = useState(false);
   const [spinning, setSpinning] = useState(false);
-  const [reels, setReels] = useState(['🦉', '💰', '🎰']); // Start met vette symbolen
+  const [reels, setReels] = useState(['🦉', '💰', '🎰']);
   
   const haptic = useHapticFeedback();
   const icons = ['🦉', '💰', '💎', '🎰', '🔥'];
@@ -18,11 +18,10 @@ export default function Home() {
   const spin = () => {
     if (spinning) return;
     
-    // 📳 Trilling bij de start! (Impact Medium voor een echte knop-vibe)
+    // 📳 START VIBE
     haptic.impactOccurred('medium');
     setSpinning(true);
     
-    // Simuleer draaien
     const interval = setInterval(() => {
       setReels([
         icons[Math.floor(Math.random() * icons.length)],
@@ -31,7 +30,6 @@ export default function Home() {
       ]);
     }, 100);
 
-    // Stop na 1.2 seconden
     setTimeout(() => {
       clearInterval(interval);
       const finalResult = [
@@ -44,78 +42,79 @@ export default function Home() {
 
       if (finalResult[0] === finalResult[1] && finalResult[1] === finalResult[2]) {
         setPoints(p => p + 100);
-        // 📳 FEEST-VRIBRATIE (Notification Success)
+        // 📳 WIN VIBE!
         haptic.notificationOccurred('success');
       } else {
         setPoints(p => p + 5);
-        // 📳 Kleine trilling bij het stoppen
         haptic.impactOccurred('light');
       }
     }, 1200);
   };
 
-  // GAMESCHERM (COIN MASTER / BOINKERS STIJL)
+  // --- HET GAMESCHERM (DARK CASINO STYLE) ---
   if (showGame) {
     return (
       <Page>
-        <div style={{ backgroundColor: '#0a0a0a', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
+        <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
           
-          {/* Unity Point Display (Grote gele cijfers) */}
-          <div style={{ textAlign: 'center', margin: '20px 0' }}>
-            <h1 style={{ fontSize: '50px', color: '#ffcc00', margin: 0, textShadow: '0 0 15px rgba(255,204,0,0.5)' }}>{points}</h1>
-            <p style={{ color: '#888', letterSpacing: '2px', fontSize: '12px' }}>UNITY CREDITS</p>
+          <div style={{ textAlign: 'center', marginTop: '30px' }}>
+            <h1 style={{ fontSize: '55px', color: '#ffcc00', margin: 0, fontWeight: '900', textShadow: '0 0 20px rgba(255,204,0,0.6)' }}>{points}</h1>
+            <p style={{ color: '#666', letterSpacing: '3px', fontSize: '10px', fontWeight: 'bold' }}>UNITY CREDITS</p>
           </div>
 
-          {/* Slot Machine Display (Reels) */}
-          <div style={{ display: 'flex', gap: '10px', backgroundColor: '#1a1a1a', padding: '20px', borderRadius: '20px', border: '3px solid #333', boxShadow: 'inset 0 0 20px black' }}>
+          <div style={{ display: 'flex', gap: '12px', backgroundColor: '#111', padding: '25px', borderRadius: '25px', border: '4px solid #222', boxShadow: 'inset 0 0 30px #000', marginTop: '40px' }}>
             {reels.map((symbol, i) => (
-              <div key={i} style={{ fontSize: '40px', width: '70px', height: '90px', backgroundColor: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', border: '1px solid #444' }}>
+              <div key={i} style={{ fontSize: '42px', width: '75px', height: '100px', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', border: '1px solid #333' }}>
                 {symbol}
               </div>
             ))}
           </div>
 
-          {/* SPIN KNOP (Grote ronde gouden knop) */}
           <button 
             onClick={spin}
             disabled={spinning}
             style={{ 
-              marginTop: '50px', width: '160px', height: '160px', borderRadius: '50%', border: 'none',
-              backgroundColor: spinning ? '#444' : '#ffcc00', color: 'black', fontSize: '26px', fontWeight: '900',
-              boxShadow: spinning ? 'none' : '0 10px 0 #b38f00, 0 15px 30px rgba(255,204,0,0.4)',
-              transform: spinning ? 'translateY(8px)' : 'none', transition: 'all 0.1s'
+              marginTop: '60px', width: '170px', height: '170px', borderRadius: '50%', border: 'none',
+              backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900',
+              boxShadow: spinning ? 'none' : '0 12px 0 #997a00, 0 20px 40px rgba(255,204,0,0.3)',
+              transform: spinning ? 'translateY(10px)' : 'none', transition: 'all 0.1s'
             }}
           >
-            {spinning ? 'SPINNING' : 'SPIN!'}
+            {spinning ? '...' : 'SPIN'}
           </button>
 
-          {/* Terugknop (Onderin) */}
-          <div onClick={() => setShowGame(false)} style={{ marginTop: 'auto', paddingBottom: '40px', color: '#555', fontWeight: 'bold' }}>
-            TERUG NAAR MENU
+          <div onClick={() => setShowGame(false)} style={{ marginTop: 'auto', marginBottom: '40px', color: '#444', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+            BACK TO MENU
           </div>
         </div>
       </Page>
     );
   }
 
-  // STARTPAGINA
+  // --- DE STARTPAGINA ---
   return (
     <Page>
       <List style={{ backgroundColor: '#000', minHeight: '100vh' }}>
         <Section>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
-            <img src="/apple-touch-icon.png.jpg" width="110" style={{ borderRadius: '25px', boxShadow: '0 0 40px rgba(255,204,0,0.3)' }} />
-            <h1 style={{ color: 'white', marginTop: '15px' }}>Unbreakable Owl</h1>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '50px 20px' }}>
+            <img src="/apple-touch-icon.png.jpg" width="120" style={{ borderRadius: '30px', boxShadow: '0 0 50px rgba(255,204,0,0.2)' }} />
+            <h1 style={{ color: 'white', marginTop: '20px', fontSize: '28px' }}>Unbreakable Owl</h1>
           </div>
         </Section>
+        
         <Section header="TON Wallet">
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '15px' }}>
             <TonConnectButton />
           </div>
         </Section>
-        <Section header="Game Menu">
-          <Cell onClick={() => { haptic.impactOccurred('light'); setShowGame(true); }} subtitle="Win big with the Slot Machine">
-            <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🎰 Play Slot Machine</span>
+
+        <Section header="Play & Earn">
+          <Cell 
+            onClick={() => { haptic.impactOccurred('light'); setShowGame(true); }} 
+            subtitle="The ultimate slot challenge"
+            style={{ backgroundColor: '#111', borderRadius: '15px', margin: '0 10px' }}
+          >
+            <span style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '18px' }}>🎰 Start Spinning</span>
           </Cell>
         </Section>
       </List>
