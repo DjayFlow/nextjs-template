@@ -9,53 +9,60 @@ export default function Home() {
   const [points, setPoints] = useState(0);
   const [showGame, setShowGame] = useState(false);
 
-  // GAMESCHERM
+  // HET GAMESCHERM
   if (showGame) {
     return (
-      <Page back={true} onBackClick={() => setShowGame(false)}>
+      <Page>
         <List>
           <Section>
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <h1 style={{ fontSize: '48px', color: '#007AFF' }}>{points}</h1>
-              <p>Unity Points</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
+              <h1 style={{ fontSize: '48px', color: '#007AFF', margin: 0 }}>{points}</h1>
+              <p style={{ color: 'gray' }}>Unity Points</p>
               <br />
               <img 
                 src="/apple-touch-icon.png.jpg" 
                 onClick={() => setPoints(points + 1)}
-                style={{ width: '200px', borderRadius: '50%', cursor: 'pointer' }} 
+                style={{ width: '200px', borderRadius: '50%', cursor: 'pointer', border: '5px solid #007AFF' }} 
               />
+              <br />
+              <button 
+                onClick={() => setShowGame(false)}
+                style={{ marginTop: '20px', padding: '10px 20px', borderRadius: '10px', border: 'none', backgroundColor: '#007AFF', color: 'white', fontWeight: 'bold' }}
+              >
+                Sluiten
+              </button>
             </div>
-            <Cell onClick={() => setShowGame(false)}>
-              <center><b>Sluiten</b></center>
-            </Cell>
           </Section>
         </List>
       </Page>
     );
   }
 
-  // STARTPAGINA
+  // DE STARTPAGINA
   return (
-    <Page back={false}>
+    <Page>
       <List>
         <Section header="Unbreakable Owl">
-          <Cell>
-            <center>
-              <img src="/apple-touch-icon.png.jpg" width="100" style={{borderRadius: '20px'}} />
-              <h2>Unity Game</h2>
-            </center>
-          </Cell>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
+            <img src="/apple-touch-icon.png.jpg" width="100" style={{ borderRadius: '20px' }} />
+            <h2 style={{ margin: '10px 0' }}>Unity Game</h2>
+          </div>
         </Section>
 
         <Section header="Wallet">
           <Cell>
-            <center><TonConnectButton /></center>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <TonConnectButton />
+            </div>
           </Cell>
         </Section>
 
         <Section header="Menu">
           <Cell onClick={() => setShowGame(true)} subtitle="Klik om te spelen">
             Start Game
+          </Cell>
+          <Cell subtitle="Komt binnenkort">
+            Leaderboard
           </Cell>
         </Section>
       </List>
