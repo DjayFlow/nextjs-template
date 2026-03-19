@@ -13,7 +13,7 @@ export default function Home() {
   
   const icons = ['🦉', '💰', '💎', '🎰', '🔥'];
 
-  // Veilige manier om te trillen zonder dat Vercel crasht
+  // De 'hufterproof' manier om te trillen
   const triggerHaptic = (type: string) => {
     const tg = (window as any).Telegram?.WebApp;
     if (tg?.HapticFeedback) {
@@ -60,20 +60,24 @@ export default function Home() {
       <Page back={true} onBackClick={() => setShowGame(false)}>
         <div style={{ backgroundColor: '#050505', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px' }}>
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <h1 style={{ fontSize: '50px', color: '#ffcc00', margin: 0 }}>{points}</h1>
-            <p style={{ color: '#666', letterSpacing: '2px' }}>UNITY CREDITS</p>
+            <h1 style={{ fontSize: '50px', color: '#ffcc00', margin: 0, fontWeight: '900' }}>{points}</h1>
+            <p style={{ color: '#666', letterSpacing: '2px', fontSize: '10px' }}>UNITY CREDITS</p>
           </div>
-          <div style={{ display: 'flex', gap: '10px', backgroundColor: '#111', padding: '20px', borderRadius: '20px', border: '3px solid #333', marginTop: '30px' }}>
+
+          <div style={{ display: 'flex', gap: '10px', backgroundColor: '#111', padding: '20px', borderRadius: '20px', border: '3px solid #333', marginTop: '30px', boxShadow: 'inset 0 0 20px black' }}>
             {reels.map((s, i) => (
-              <div key={i} style={{ fontSize: '40px', width: '70px', height: '90px', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px' }}>{s}</div>
+              <div key={i} style={{ fontSize: '40px', width: '70px', height: '90px', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', border: '1px solid #333' }}>
+                {s}
+              </div>
             ))}
           </div>
+
           <button 
             onClick={spin}
             disabled={spinning}
             style={{ 
               marginTop: '50px', width: '160px', height: '160px', borderRadius: '50%', border: 'none',
-              backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '24px', fontWeight: '900',
+              backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '26px', fontWeight: '900',
               boxShadow: spinning ? 'none' : '0 10px 0 #997a00, 0 15px 30px rgba(255,204,0,0.3)',
               transform: spinning ? 'translateY(8px)' : 'none', transition: 'all 0.1s'
             }}
@@ -89,23 +93,22 @@ export default function Home() {
     <Page back={false}>
       <List style={{ backgroundColor: '#000', minHeight: '100vh' }}>
         <Section>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px' }}>
-            <img src="/apple-touch-icon.png.jpg" width="110" style={{ borderRadius: '25px' }} />
-            <h1 style={{ color: 'white' }}>Unbreakable Owl</h1>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
+            <img src="/apple-touch-icon.png.jpg" width="110" style={{ borderRadius: '25px', boxShadow: '0 0 40px rgba(255,204,0,0.2)' }} />
+            <h1 style={{ color: 'white', marginTop: '15px' }}>Unbreakable Owl</h1>
           </div>
         </Section>
-        <Section header="TON Wallet">
+        <Section header="Wallet Connection">
           <div style={{ display: 'flex', justifyContent: 'center', padding: '10px' }}>
             <TonConnectButton />
           </div>
         </Section>
-        <Section header="Menu">
+        <Section header="Game Menu">
           <Cell onClick={() => setShowGame(true)} subtitle="Win big like Boinkers!">
-            <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🎰 Play Slots</span>
+            <span style={{ color: '#ffcc00', fontWeight: 'bold' }}>🎰 Play Slot Machine</span>
           </Cell>
         </Section>
       </List>
     </Page>
   );
 }
-
