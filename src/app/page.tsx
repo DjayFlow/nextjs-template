@@ -3,7 +3,7 @@
 import { Section, Cell, Image, List } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
-import { Link } from '@/components/Link/Link'; // Dit is de verbinding naar je game!
+import { Link } from '@/components/Link/Link'; // De verbinding naar je game
 
 export default function Home() {
   return (
@@ -31,7 +31,7 @@ export default function Home() {
           </Cell>
         </Section>
 
-        {/* Game Menu - Hier zit nu de werkende link naar je game! */}
+        {/* Game Menu - Nu met de werkende link naar je game! */}
         <Section header="Menu">
           <Link href="/launch">
             <Cell 
