@@ -18,8 +18,8 @@ export default function Home() {
   const spin = () => {
     if (spinning) return;
     
-    // 📳 START VIBE
-    haptic.impactOccurred('medium');
+    // De '?' zorgt ervoor dat het niet crasht als de telefoon geen trilling heeft
+    haptic?.impactOccurred('medium');
     setSpinning(true);
     
     const interval = setInterval(() => {
@@ -42,11 +42,10 @@ export default function Home() {
 
       if (finalResult[0] === finalResult[1] && finalResult[1] === finalResult[2]) {
         setPoints(p => p + 100);
-        // 📳 WIN VIBE!
-        haptic.notificationOccurred('success');
+        haptic?.notificationOccurred('success'); 
       } else {
         setPoints(p => p + 5);
-        haptic.impactOccurred('light');
+        haptic?.impactOccurred('light');
       }
     }, 1200);
   };
@@ -64,7 +63,7 @@ export default function Home() {
 
           <div style={{ display: 'flex', gap: '12px', backgroundColor: '#111', padding: '25px', borderRadius: '25px', border: '4px solid #222', boxShadow: 'inset 0 0 30px #000', marginTop: '40px' }}>
             {reels.map((symbol, i) => (
-              <div key={i} style={{ fontSize: '42px', width: '75px', height: '100px', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', border: '1px solid #333' }}>
+              <div key={i} style={{ fontSize: '42px', width: '70px', height: '90px', backgroundColor: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', border: '1px solid #333' }}>
                 {symbol}
               </div>
             ))}
@@ -74,7 +73,7 @@ export default function Home() {
             onClick={spin}
             disabled={spinning}
             style={{ 
-              marginTop: '60px', width: '170px', height: '170px', borderRadius: '50%', border: 'none',
+              marginTop: '60px', width: '160px', height: '160px', borderRadius: '50%', border: 'none',
               backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900',
               boxShadow: spinning ? 'none' : '0 12px 0 #997a00, 0 20px 40px rgba(255,204,0,0.3)',
               transform: spinning ? 'translateY(10px)' : 'none', transition: 'all 0.1s'
@@ -83,7 +82,7 @@ export default function Home() {
             {spinning ? '...' : 'SPIN'}
           </button>
 
-          <div onClick={() => setShowGame(false)} style={{ marginTop: 'auto', marginBottom: '40px', color: '#444', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+          <div onClick={() => setShowGame(false)} style={{ marginTop: 'auto', marginBottom: '40px', color: '#444', fontWeight: 'bold', fontSize: '12px' }}>
             BACK TO MENU
           </div>
         </div>
@@ -97,7 +96,7 @@ export default function Home() {
       <List style={{ backgroundColor: '#000', minHeight: '100vh' }}>
         <Section>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '50px 20px' }}>
-            <img src="/apple-touch-icon.png.jpg" width="120" style={{ borderRadius: '30px', boxShadow: '0 0 50px rgba(255,204,0,0.2)' }} />
+            <img src="/apple-touch-icon.png.jpg" width="110" style={{ borderRadius: '25px', boxShadow: '0 0 50px rgba(255,204,0,0.2)' }} />
             <h1 style={{ color: 'white', marginTop: '20px', fontSize: '28px' }}>Unbreakable Owl</h1>
           </div>
         </Section>
@@ -110,7 +109,7 @@ export default function Home() {
 
         <Section header="Play & Earn">
           <Cell 
-            onClick={() => { haptic.impactOccurred('light'); setShowGame(true); }} 
+            onClick={() => { haptic?.impactOccurred('light'); setShowGame(true); }} 
             subtitle="The ultimate slot challenge"
             style={{ backgroundColor: '#111', borderRadius: '15px', margin: '0 10px' }}
           >
