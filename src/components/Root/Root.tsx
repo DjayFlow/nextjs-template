@@ -29,7 +29,7 @@ function RootInner({ children }: PropsWithChildren) {
   }, [initDataUser]);
 
   return (
-    <TonConnectUIProvider manifestUrl="/tonconnect-manifest.json">
+    <TonConnectUIProvider manifestUrl="/tonconnect-manifest.json" network="mainnet">
       <AppRoot
         appearance={isDark ? 'dark' : 'light'}
         platform={
