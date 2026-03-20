@@ -1,31 +1,26 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Section, Cell, List, Button } from '@telegram-apps/telegram-ui';
+import { Section, Cell, List, Button, Progress } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
 const MAX_SPINS = 50;
-
-const LEADERBOARD_DATA = [
-  { name: "KingOwl_99", points: 154200, rank: "🥇" },
-  { name: "CryptoVogel", points: 98500, rank: "🥈" },
-  { name: "DjayFlow", points: 75000, rank: "🥉" },
-  { name: "SlotMaster", points: 42000, rank: "4" },
-  { name: "LuckyBird", points: 12500, rank: "5" }
-];
+const XP_PER_LEVEL = 5000;
 
 export default function Home() {
+  // --- STATE MET LOCALSTORAGE (Persistente data) ---
   const [points, setPoints] = useState(775);
-  const [spins, setSpins] = useState(10); // Start met wat spins om te testen
-  const [multiplier, setMultiplier] = useState(1);
+  const [spins, setSpins] = useState(10);
+  const [shields, setShields] = useState(0);
+  const [xp, setXp] = useState(0);
   const [stage, setStage] = useState(1);
   
+  const [multiplier, setMultiplier] = useState(1);
   const [spinning, setSpinning] = useState(false);
   const [autoSpin, setAutoSpin] = useState(false);
   const [reels, setReels] = useState(['🦉', '🎰', '💎']);
   const [isMuted, setIsMuted] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [isAttacking, setIsAttacking] = useState(false);
   const [shake, setShake] = useState(false);
   const [eventMsg, setEventMsg] = useState('');
@@ -33,7 +28,31 @@ export default function Home() {
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
-  // --- AUDIO ENGINE (FIXED) ---
+  // --- LOKALE OPSLAG LADEN ---
+  useEffect(() => {
+    const savedPoints = localStorage.getItem('owl_points');
+    const savedSpins = localStorage.getItem('owl_spins');
+    const savedShields = localStorage.getItem('owl_shields');
+    if (savedPoints) setPoints(parseInt(savedPoints));
+    if (savedSpins) setSpins(parseInt(savedSpins));
+    if (savedShields) setShields(parseInt(savedShields));
+  }, []);
+
+  // --- LOKALE OPSLAG OPSLAAN ---
+  useEffect(() => {
+    localStorage.setItem('owl_points', points.toString());
+    localStorage.setItem('owl_spins', spins.toString());
+    localStorage.setItem('owl_shields', shields.toString());
+  }, [points, spins, shields]);
+
+  // --- ENERGIE REGEN (1 spin elke 60 sec) ---
+  useEffect(() => {
+    const regenInterval = setInterval(() => {
+      setSpins(p => p < MAX_SPINS ? p + 1 : p);
+    }, 60000); 
+    return () => clearInterval(regenInterval);
+  }, []);
+
   const playSound = (name: string) => {
     if (isMuted) return;
     const audio = new Audio(`/sounds/${name}.mp3`);
@@ -41,52 +60,14 @@ export default function Home() {
     audio.play().catch(() => {});
   };
 
-  const toggleMusic = (forcePlay?: boolean) => {
-    if (!bgMusicRef.current) {
-      bgMusicRef.current = new Audio('/sounds/Got 5 on it Symphonic Horror trap FM 152bpm.mp3');
-      bgMusicRef.current.loop = true;
-      bgMusicRef.current.volume = 0.2;
-    }
-
-    if (forcePlay === true || isMuted) {
-      bgMusicRef.current.play().catch(() => {});
-      setIsMuted(false);
-    } else {
-      bgMusicRef.current.pause();
-      setIsMuted(true);
-    }
-  };
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (autoSpin && !spinning && !isAttacking && spins >= multiplier) {
-      timer = setTimeout(() => spin(), 1200);
-    } else if (autoSpin && spins < multiplier) {
-      setAutoSpin(false);
-    }
-    return () => clearTimeout(timer);
-  }, [autoSpin, spinning, isAttacking, spins, multiplier]);
-
   const spin = () => {
-    // Check of we kunnen spinnen
-    if (spinning || isAttacking) return;
-    
-    if (spins < multiplier) {
-      setEventMsg("❌ GEEN SPINS MEER!");
-      playSound('click');
+    if (spinning || isAttacking || spins < multiplier) {
+      if (spins < multiplier) setEventMsg("❌ NO ENERGY! WAIT FOR REFILL");
       setAutoSpin(false);
       return;
     }
 
-    // Start muziek als het nog niet speelt
-    if (!isMuted && (!bgMusicRef.current || bgMusicRef.current.paused)) {
-      toggleMusic(true);
-    }
-
     playSound('spin');
-    const tg = (window as any).Telegram?.WebApp;
-    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-
     setSpinning(true);
     setSpins(p => p - multiplier);
     setEventMsg('');
@@ -99,66 +80,60 @@ export default function Home() {
       clearInterval(interval);
       const res = [icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]];
       setReels(res);
-      setSpinning(false); // <--- Cruciaal: spinning naar false
+      setSpinning(false);
 
       if (res[0] === res[1] && res[1] === res[2]) {
         handleWin(res[0]);
       } else {
-        setPoints(p => p + (5 * multiplier));
+        addPoints(5 * multiplier);
         playSound('points');
       }
-    }, 1200);
+    }, 1000);
+  };
+
+  const addPoints = (amt: number) => {
+    setPoints(p => p + amt);
+    setXp(x => {
+      const newXp = x + (amt / 10);
+      if (newXp >= XP_PER_LEVEL) {
+        setStage(s => s + 1);
+        playSound('level');
+        setEventMsg(`🚀 STAGE UP! LEVEL ${stage + 1}`);
+        return 0;
+      }
+      return newXp;
+    });
   };
 
   const handleWin = (symbol: string) => {
-    if (symbol === '🦉') {
-      setEventMsg("👑 KONINGSUIL! +10.000");
-      setPoints(p => p + (10000 * multiplier));
-      playSound('victory');
-    } else if (symbol === '💎') {
-      setEventMsg("💎 DIAMANTEN REGEN! +7500");
-      setPoints(p => p + (7500 * multiplier));
-      playSound('megawin');
-      setTimeout(() => playSound('cash'), 3000);
+    if (symbol === '🔥') {
+      if (shields < 3) {
+        setShields(s => s + 1);
+        setEventMsg("🛡️ SHIELD COLLECTED!");
+        playSound('badge');
+      } else {
+        addPoints(1000 * multiplier);
+        setEventMsg("💰 SHIELDS FULL! +1000 CASH");
+        playSound('cash');
+      }
     } else if (symbol === '🔨') {
       setIsAttacking(true);
       playSound('bonus');
       setTimeout(() => {
         setShake(true);
-        setEventMsg(`🔨 BOEM! +${1500 * multiplier}`);
-        setPoints(p => p + (1500 * multiplier));
+        setEventMsg(`🔨 ATTACK SUCCESS! +${2000 * multiplier}`);
+        addPoints(2000 * multiplier);
         playSound('payout');
-        setTimeout(() => { 
-          setShake(false); 
-          setIsAttacking(false); 
-        }, 1200);
+        setTimeout(() => { setShake(false); setIsAttacking(false); }, 1200);
       }, 2000);
     } else {
-      const isJackpot = symbol === '🎰';
-      setPoints(p => p + (2500 * multiplier));
-      setEventMsg(`🎉 BIG WIN! +${2500 * multiplier}`);
-      playSound(isJackpot ? 'jackpot' : 'win');
+      const winAmt = symbol === '🦉' ? 10000 : 2500;
+      addPoints(winAmt * multiplier);
+      setEventMsg(`🎉 BIG WIN! +${winAmt * multiplier}`);
+      playSound(symbol === '🦉' ? 'victory' : 'jackpot');
       setTimeout(() => playSound('coins'), 500);
     }
   };
-
-  if (showLeaderboard) {
-    return (
-      <Page>
-        <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', padding: '20px', color: 'white' }}>
-          <Button onClick={() => setShowLeaderboard(false)} style={{ marginBottom: '20px' }}>TERUG NAAR NEST</Button>
-          <h1 style={{ textAlign: 'center', color: '#ffcc00' }}>🏆 TOP UILEN</h1>
-          <List style={{ backgroundColor: 'transparent' }}>
-            {LEADERBOARD_DATA.map((u, i) => (
-              <Cell key={i} subtitle={`${u.points.toLocaleString()} Credits`} style={{ backgroundColor: 'rgba(0,0,0,0.8)', borderRadius: '15px', marginBottom: '10px' }}>
-                <span style={{ color: 'white' }}>{u.rank} {u.name}</span>
-              </Cell>
-            ))}
-          </List>
-        </div>
-      </Page>
-    );
-  }
 
   return (
     <Page>
@@ -169,83 +144,97 @@ export default function Home() {
         transform: shake ? 'scale(1.05) rotate(2deg)' : 'none', transition: 'transform 0.1s'
       }}>
         
-        {/* BOINKERS STYLE HEADER */}
+        {/* --- DYNAMIC HEADER --- */}
         <div style={{ 
-          width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          backgroundColor: 'rgba(0,0,0,0.85)', padding: '12px', borderRadius: '18px',
-          borderBottom: '3px solid #ffcc00', marginBottom: '15px'
+          width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '20px',
+          borderBottom: '3px solid #ffcc00', marginBottom: '10px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>💰</span>
-            <span style={{ fontWeight: '900', color: '#ffcc00' }}>{points.toLocaleString()}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+               <span style={{ fontSize: '20px' }}>💰</span>
+               <span style={{ fontWeight: '900', color: '#ffcc00' }}>{points.toLocaleString()}</span>
+             </div>
+             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+               {Array.from({length: 3}).map((_, i) => (
+                 <span key={i} style={{ opacity: i < shields ? 1 : 0.2, fontSize: '18px' }}>🛡️</span>
+               ))}
+             </div>
+             <TonConnectButton />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🧪</span>
-            <div style={{ width: '80px', height: '14px', backgroundColor: '#222', borderRadius: '7px', overflow: 'hidden', border: '1px solid #444' }}>
-              <div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} />
-            </div>
-            <span style={{ fontSize: '11px' }}>{spins}</span>
-          </div>
-          <TonConnectButton />
-        </div>
-
-        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', padding: '0 10px' }}>
-          <div onClick={() => { setShowLeaderboard(true); playSound('click'); }} style={{ cursor: 'pointer', fontSize: '24px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '10px', borderRadius: '50%', border: '1px solid #ffcc00' }}>🏆</div>
-          <div onClick={() => { toggleMusic(); playSound('click'); }} style={{ cursor: 'pointer', fontSize: '24px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '10px', borderRadius: '50%', border: '1px solid #ffcc00' }}>
-            {isMuted ? '🔇' : '🔊'}
+          
+          {/* XP Progress Bar */}
+          <div style={{ width: '100%', height: '8px', backgroundColor: '#222', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: `${(xp / XP_PER_LEVEL) * 100}%`, height: '100%', backgroundColor: '#a020f0', boxShadow: '0 0 10px #a020f0' }} />
           </div>
         </div>
 
-        {isAttacking && (
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(255,204,0,0.15)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ fontSize: '120px', animation: 'owlAttack 2s forwards' }}>🦉🚀🔨</div>
+        {/* Energy/Spins Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '5px 15px', borderRadius: '20px', marginBottom: '15px' }}>
+          <span style={{ fontSize: '14px' }}>🧪 ENERGY:</span>
+          <div style={{ width: '100px', height: '10px', backgroundColor: '#111', borderRadius: '5px', overflow: 'hidden', border: '1px solid #444' }}>
+            <div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} />
           </div>
-        )}
+          <span style={{ fontSize: '12px', fontWeight: 'bold' }}>{spins}/{MAX_SPINS}</span>
+        </div>
 
-        <div style={{ margin: '30px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.4)', padding: '20px', borderRadius: '35px', border: '2px solid #ffcc00' }}>
+        {/* --- SLOT MACHINE --- */}
+        <div style={{ margin: '20px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '35px', border: '2px solid rgba(255,204,0,0.3)', boxShadow: 'inset 0 0 40px black' }}>
           {reels.map((s, i) => (
             <div key={i} style={{ 
-              fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', 
+              fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#0a0a0a', 
               display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '18px', 
-              filter: spinning ? 'blur(5px)' : 'none'
+              filter: spinning ? 'blur(5px)' : 'none', border: '1px solid #333'
             }}>{s}</div>
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '25px' }}>
-          {[1, 2, 3, 5].map(m => (
+        {/* Multipliers */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+          {[1, 2, 3, 5, 10].map(m => (
             <button key={m} onClick={() => { setMultiplier(m); playSound('click'); }} style={{ 
-              width: '45px', height: '45px', borderRadius: '12px', border: 'none', 
+              width: '42px', height: '42px', borderRadius: '10px', border: 'none', 
               backgroundColor: multiplier === m ? '#ffcc00' : '#1a1a1a', 
               color: multiplier === m ? 'black' : 'white', fontWeight: '900'
             }}>x{m}</button>
           ))}
         </div>
 
+        {/* Hoofd Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
           <div onClick={() => { setAutoSpin(!autoSpin); playSound('powerup'); }} style={{ cursor: 'pointer', textAlign: 'center' }}>
             <div style={{ width: '55px', height: '55px', borderRadius: '50%', backgroundColor: autoSpin ? '#ffcc00' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444' }}>🔄</div>
-            <span style={{ fontSize: '10px', color: autoSpin ? '#ffcc00' : '#888' }}>AUTO</span>
+            <span style={{ fontSize: '10px', color: autoSpin ? '#ffcc00' : '#888', fontWeight: 'bold' }}>AUTO</span>
           </div>
 
           <button onClick={spin} disabled={spinning || isAttacking} style={{ 
-            width: '150px', height: '150px', borderRadius: '50%', border: 'none', 
-            backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', 
+            width: '140px', height: '140px', borderRadius: '50%', border: 'none', 
+            backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '30px', fontWeight: '900', 
             boxShadow: spinning ? 'none' : '0 12px 0 #997a00'
           }}>SPIN</button>
 
-          <div onClick={() => { playSound('reward'); setSpins(p => Math.min(p + 10, MAX_SPINS)); setEventMsg("🎁 +10 SPINS!"); }} style={{ cursor: 'pointer', textAlign: 'center' }}>
+          <div onClick={() => { playSound('reward'); setPoints(p => p + 500); setEventMsg("🎁 GIFT COLLECTED!"); }} style={{ cursor: 'pointer', textAlign: 'center' }}>
              <div style={{ width: '55px', height: '55px', borderRadius: '50%', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444' }}>🎁</div>
-             <span style={{ fontSize: '10px', color: '#888' }}>REFILL</span>
+             <span style={{ fontSize: '10px', color: '#888', fontWeight: 'bold' }}>GIFT</span>
           </div>
         </div>
 
+        {/* Status Text */}
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+           <p style={{ color: '#ffcc00', fontWeight: 'bold', fontSize: '12px' }}>STAGE {stage}: THE OWL'S NEST</p>
+        </div>
+
+        {/* Overlays */}
         {eventMsg && (
           <div style={{ 
-            position: 'absolute', bottom: '120px', backgroundColor: '#ffcc00', color: 'black', 
-            padding: '12px 25px', borderRadius: '20px', fontWeight: '900', animation: 'slideUp 0.4s'
-          }}>
-            {eventMsg}
+            position: 'absolute', bottom: '100px', backgroundColor: '#ffcc00', color: 'black', 
+            padding: '12px 25px', borderRadius: '20px', fontWeight: '900', boxShadow: '0 0 20px rgba(0,0,0,0.5)',
+            animation: 'slideUp 0.4s'
+          }}>{eventMsg}</div>
+        )}
+
+        {isAttacking && (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ fontSize: '120px', animation: 'owlAttack 2s forwards' }}>🦉🚀🔨</div>
           </div>
         )}
 
@@ -256,7 +245,7 @@ export default function Home() {
             100% { transform: translate(500px, -500px) scale(0.3); }
           }
           @keyframes slideUp {
-            from { transform: translateY(80px); opacity: 0; }
+            from { transform: translateY(50px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
           }
         `}</style>
