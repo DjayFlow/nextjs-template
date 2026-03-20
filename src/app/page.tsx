@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, Tappable, List, Info, Modal } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, Tappable, List, Info } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -55,7 +55,7 @@ export default function Home() {
     }
   }, [points, spins, stage, fleetLevels, bossHp, isLoaded]);
 
-  // AUTO SPIN LOGIC
+  // AUTO CLICKER LOGIC
   useEffect(() => {
     let timer: any;
     if (autoSpin && spins >= multiplier && !spinning) {
@@ -64,25 +64,10 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [autoSpin, spins, spinning]);
 
-  // PASSIVE INCOME
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (isLoaded) {
-        const income = Math.floor(((fleetLevels.scout * 50 + fleetLevels.battle * 250 + fleetLevels.galleon * 1000) / 3600) * 5 * (1 + stage * 0.05)); 
-        if (income > 0) setPoints(p => p + income);
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [isLoaded, fleetLevels, stage]);
-
   const spin = () => {
-    if (spinning || spins < multiplier) {
-        setAutoSpin(false);
-        return;
-    }
+    if (spinning || spins < multiplier) { setAutoSpin(false); return; }
     setSpinning(true);
     setSpins(p => p - multiplier);
-    setEventMsg('');
     const interval = setInterval(() => {
       setReels([icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]]);
     }, 50);
@@ -95,17 +80,17 @@ export default function Home() {
         const win = (res[0] === '🦉' ? 10000 : 2500) * multiplier * (1 + stage * 0.1);
         setPoints(p => p + Math.floor(win));
         setEventMsg(`🎉 BIG WIN! +${Math.floor(win).toLocaleString()}`);
-      } else {
-        setPoints(p => p + (5 * multiplier));
-      }
+      } else { setPoints(p => p + (5 * multiplier)); }
     }, 1000);
   };
+
+  // --- RENDERS ---
 
   const renderHome = () => (
     <>
       <div style={{ margin: '15px 0', height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-         <img src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: `drop-shadow(0 0 ${Math.min(stage, 20)}px gold)` }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/owl.png'; }} />
-         <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 10px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', marginTop: '5px' }}>LVL {stage} | {stage >= 15 ? 'DIVINE' : 'UNBREAKABLE'}</div>
+         <img src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: `drop-shadow(0 0 ${Math.min(stage, 25)}px gold)` }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/owl.png'; }} />
+         <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 10px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', marginTop: '5px' }}>LVL {stage} | DIVINE</div>
       </div>
 
       <div style={{ width: '100%', padding: '0 30px', marginBottom: '10px' }}>
@@ -126,7 +111,7 @@ export default function Home() {
          <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
       </div>
 
-      <div style={{ margin: '20px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '15px', borderRadius: '25px', border: '2px solid #ffcc00' }}>
+      <div style={{ margin: '30px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '20px', borderRadius: '25px', border: '2px solid #ffcc00' }}>
         {reels.map((s, i) => (<div key={i} style={{ fontSize: '36px', width: '65px', height: '85px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
       </div>
 
@@ -136,14 +121,14 @@ export default function Home() {
 
   const renderShop = () => (
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
-      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>🛒 PREMIUM SHOP</Headline>
-      <Section header="INGAME PURCHASES">
+      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>🛒 UNBREAKABLE SHOP</Headline>
+      <Section header="RESOURCES">
           <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000) { setPoints(p => p - 5000); setSpins(s => Math.min(s + 50, MAX_SPINS)); } }}>BUY</Button>}>+50 ENERGY</Cell>
           <Cell subtitle={`${stage * 10000} Credits`} after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p => p - stage * 10000); setStage(s => s + 1); } }}>UPGRADE</Button>}>EVOLVE OWL</Cell>
       </Section>
-      <Section header="REAL MONEY (STARS/TON)">
-          <Cell before={<span>⭐</span>} subtitle="Get energy instantly" after={<Button size="s" mode="filled">100 ⭐</Button>}>+500 ENERGY</Cell>
-          <Cell before={<span>💎</span>} subtitle="Withdrawal earnings" after={<Button size="s" mode="outline" onClick={() => alert("Withdrawal requested!")}>CASH OUT</Button>}>EARN TON</Cell>
+      <Section header="PREMIUM (STARS/TON)">
+          <Cell before={<span>⭐</span>} subtitle="100 Stars" after={<Button size="s" mode="filled">BUY</Button>}>+500 ENERGY</Cell>
+          <Cell before={<span>💎</span>} subtitle="Withdrawal" after={<Button size="s" mode="outline" onClick={() => alert("Cashing out to TON!")}>CASH OUT</Button>}>EARN TON</Cell>
       </Section>
       <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '15px' }}>BACK TO NEST</Button>
     </div>
@@ -151,31 +136,19 @@ export default function Home() {
 
   const renderInfo = () => (
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards', maxHeight: '80vh', overflowY: 'auto' }}>
-      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>ℹ️ WIKI & RULES</Headline>
-      <Section header="CORE VALUE" footer="Our foundation for success.">
-          <div style={{ padding: '15px', fontStyle: 'italic', textAlign: 'center', backgroundColor: 'rgba(255,204,0,0.1)', borderRadius: '10px' }}>"Respect as a foundation for Unity"</div>
-      </Section>
-      <Section header="OWL EVOLUTIONS">
+      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>ℹ️ GAME WIKI</Headline>
+      <Section header="EVOLUTIONS">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '10px' }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(i => (
                   <div key={i} style={{ textAlign: 'center' }}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '5px' }} /><span style={{ fontSize: '8px' }}>LVL {i}</span></div>
               ))}
           </div>
       </Section>
+      <Section header="RULES">
+          <Cell multiline subtitle="Spin to earn credits. Use credits to upgrade your owl and fleet. Build a fleet for passive income.">How to play</Cell>
+          <Cell multiline subtitle="Use your energy to attack the Void Boss or intercept fleets for massive loot.">Warfare</Cell>
+      </Section>
       <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '15px' }}>BACK TO NEST</Button>
-    </div>
-  );
-
-  const renderBoss = () => (
-    <div style={{ width: '100%', padding: '10px', textAlign: 'center' }}>
-      <Headline style={{ color: '#ff3333' }}>💀 BOSS RAID</Headline>
-      <img src="/image/boss_vortigern.jpeg" alt="Boss" style={{ width: '100%', borderRadius: '15px', margin: '15px 0', border: '1px solid #ff3333' }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/crow.png'; }} />
-      <div style={{ marginBottom: '15px', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 'bold' }}><span>VOID HP</span><span>{bossHp.toLocaleString()}</span></div>
-        <div style={{ width: '100%', height: '8px', backgroundColor: '#333', borderRadius: '4px', marginTop: '5px' }}><div style={{ width: `${(bossHp / 1000000) * 100}%`, height: '100%', backgroundColor: '#ff3333' }} /></div>
-      </div>
-      <Button size="l" mode="filled" style={{ width: '100%', backgroundColor: '#ff3333' }} onClick={() => setBossHp(h => Math.max(0, h - 5000))}>ATTACK BOSS</Button>
-      <Button onClick={() => setView('home')} mode="plain" style={{ marginTop: '10px', color: 'white' }}>BACK TO NEST</Button>
     </div>
   );
 
@@ -193,28 +166,18 @@ export default function Home() {
         {view === 'home' ? renderHome() : 
          view === 'shop' ? renderShop() : 
          view === 'info' ? renderInfo() : 
-         view === 'boss' ? renderBoss() : 
-         view === 'fleet' ? (
-            <div style={{ width: '100%', padding: '10px' }}>
-                <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🚢 FLEET HUB</Headline>
-                <Section header="SHIPS">
-                    <Cell subtitle={`LVL ${fleetLevels.scout}`} after={<Button size="s" onClick={() => { if(points >= 10000) { setPoints(p => p - 10000); setFleetLevels(f => ({...f, scout: f.scout + 1})); } }}>UPGRADE</Button>}>Scout Nest</Cell>
-                </Section>
-                <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '20px' }}>BACK</Button>
+         view === 'boss' ? (
+            <div style={{ width: '100%', textAlign: 'center' }}>
+                <Headline style={{ color: '#ff3333' }}>💀 BOSS RAID</Headline>
+                <img src="/image/boss_vortigern.jpeg" style={{ width: '100%', borderRadius: '15px', margin: '15px 0' }} />
+                <Button onClick={() => setView('home')} style={{ width: '100%' }}>BACK</Button>
             </div>
-         ) : (
-            <div style={{ width: '100%', padding: '10px' }}>
-                <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR QUEST</Headline>
-                <Section header="MISSIONS"><Cell after={<Button size="s">CLAIM</Button>}>Daily Check-in</Cell></Section>
-                <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '20px' }}>BACK</Button>
-            </div>
-         )}
+         ) : <Button onClick={() => setView('home')}>BACK</Button>}
 
         {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '12px 25px', borderRadius: '20px', fontWeight: 'bold', zIndex: 2000, boxShadow: '0 0 20px gold' }}>{eventMsg}</div>
+          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '12px 25px', borderRadius: '20px', fontWeight: 'bold', zIndex: 2000 }}>{eventMsg}</div>
         )}
       </div>
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </Page>
   );
 }
