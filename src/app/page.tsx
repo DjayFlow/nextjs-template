@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, List, Tappable } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, List } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -11,11 +11,14 @@ const MAX_LEVEL = 15;
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   
+  // --- STATE ---
   const [points, setPoints] = useState<number>(14135);
   const [spins, setSpins] = useState<number>(50);
   const [stage, setStage] = useState<number>(1);
   const [view, setView] = useState<'home' | 'radar' | 'fleet'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // --- UI STATE ---
   const [spinning, setSpinning] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
   const [reels, setReels] = useState(['🦉', '🎰', '💎']);
@@ -24,6 +27,7 @@ export default function Home() {
 
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
+  // --- DATA LOADING & PASSIVE INCOME ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
@@ -42,6 +46,16 @@ export default function Home() {
     }
   }, [points, spins, stage, isLoaded]);
 
+  // NIEUW: Passief inkomen (elke 5 seconden krijg je 10 credits extra!)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isLoaded) {
+        setPoints(p => p + 10);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isLoaded]);
+
   const spin = () => {
     if (spinning || spins < multiplier) return;
     setSpinning(true);
@@ -59,7 +73,8 @@ export default function Home() {
       setSpinning(false);
       
       if (res[0] === res[1] && res[1] === res[2]) {
-        const win = (res[0] === '🦉' ? 10000 : 2500) * multiplier * (1 + stage * 0.2);
+        const isOwl = res[0] === '🦉';
+        const win = (isOwl ? 10000 : 2500) * multiplier * (1 + stage * 0.2);
         setPoints(p => p + Math.floor(win));
         setEventMsg(`🎉 BIG WIN! +${Math.floor(win).toLocaleString()}`);
       } else {
@@ -80,11 +95,19 @@ export default function Home() {
       <Section header="AVAILABLE SHIPS">
           <Cell 
             before={<span>🚢</span>}
-            after={<Button size="s">UPGRADE</Button>}
+            after={<Button size="s" mode="filled">UPGRADE</Button>}
             subtitle="Income: +50/hr"
             description="Price: 10.000 Credits"
           >
             Scout Nest (LVL 1)
+          </Cell>
+          <Cell 
+            before={<span>🚢</span>}
+            after={<Button size="s" mode="outline">BUY</Button>}
+            subtitle="Income: +250/hr"
+            description="Price: 50.000 Credits"
+          >
+            Battle Wing
           </Cell>
       </Section>
 
@@ -119,13 +142,9 @@ export default function Home() {
             </div>
 
             <div style={{ display: 'flex', gap: '15px', position: 'absolute', right: '15px', top: '150px', flexDirection: 'column' }}>
-               <div onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</div>
-               <div onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🚢</div>
-               <div onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</div>
-            </div>
-
-            <div style={{ margin: '20px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
-              {reels.map((s, i) => (<div key={i} style={{ fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
+               <div onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>📡</div>
+               <div onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>🚢</div>
+               <div onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>🛒</div>
             </div>
 
             <button onClick={spin} disabled={spinning} style={{ width: '140px', height: '140px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 12px 0 #997a00' }}>SPIN</button>
@@ -142,6 +161,7 @@ export default function Home() {
           <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000 }}>{eventMsg}</div>
         )}
       </div>
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </Page>
   );
 }
