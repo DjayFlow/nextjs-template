@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, Banner, Badge } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, List, Tappable } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -11,14 +11,11 @@ const MAX_LEVEL = 15;
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   
-  // --- PERSISTENT STATE ---
   const [points, setPoints] = useState<number>(14135);
   const [spins, setSpins] = useState<number>(50);
   const [stage, setStage] = useState<number>(1);
   const [view, setView] = useState<'home' | 'radar' | 'fleet'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
-
-  // --- UI STATE ---
   const [spinning, setSpinning] = useState(false);
   const [multiplier, setMultiplier] = useState(1);
   const [reels, setReels] = useState(['🦉', '🎰', '💎']);
@@ -27,7 +24,6 @@ export default function Home() {
 
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
-  // --- DATA LOADING ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
@@ -58,7 +54,7 @@ export default function Home() {
 
     setTimeout(() => {
       clearInterval(interval);
-      const res = [icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[icons.length - 1]];
+      const res = [icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]];
       setReels(res);
       setSpinning(false);
       
@@ -76,11 +72,10 @@ export default function Home() {
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
       <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '20px' }} weight="1">🚢 BOINK FLEET HUB</Headline>
       
-      <Banner 
-        before={<Badge>INFO</Badge>} // Gefixt: type="strong" verwijderd
-        header="Passive Income"
-        subheader="Your fleet earns points even when you are not spinning!"
-      />
+      <div style={{ backgroundColor: 'rgba(255, 204, 0, 0.1)', padding: '15px', borderRadius: '12px', border: '1px solid #ffcc00', marginBottom: '20px' }}>
+        <p style={{ color: '#ffcc00', margin: 0, fontWeight: 'bold' }}>Passive Income Active</p>
+        <p style={{ fontSize: '12px', margin: '5px 0 0 0' }}>Your fleet earns credits while you sleep!</p>
+      </div>
 
       <Section header="AVAILABLE SHIPS">
           <Cell 
@@ -93,7 +88,7 @@ export default function Home() {
           </Cell>
       </Section>
 
-      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '10px' }}>BACK TO NEST</Button>
+      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK TO NEST</Button>
     </div>
   );
 
@@ -101,7 +96,6 @@ export default function Home() {
     <Page>
       <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px' }}>
         
-        {/* HEADER */}
         <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '18px', borderBottom: '3px solid #ffcc00', marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
@@ -125,9 +119,9 @@ export default function Home() {
             </div>
 
             <div style={{ display: 'flex', gap: '15px', position: 'absolute', right: '15px', top: '150px', flexDirection: 'column' }}>
-               <div onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>📡</div>
-               <div onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>🚢</div>
-               <div onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>🛒</div>
+               <div onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</div>
+               <div onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🚢</div>
+               <div onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</div>
             </div>
 
             <div style={{ margin: '20px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
@@ -148,7 +142,6 @@ export default function Home() {
           <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000 }}>{eventMsg}</div>
         )}
       </div>
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </Page>
   );
 }
