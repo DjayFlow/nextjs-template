@@ -128,26 +128,48 @@ export default function Home() {
          <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: '900', marginTop: '5px' }}>LVL {stage} | UNBREAKABLE</div>
       </div>
 
-      {/* GEFIXTE ENERGY BALK SECTIE */}
-      <div style={{ width: '100%', padding: '0 25px', marginBottom: '10px', position: 'relative' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+      {/* --- GEFIXTE ENERGY BALK --- */}
+      <div style={{ width: '90%', marginBottom: '15px', position: 'relative' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
             <span style={{ fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>🧪 ENERGY POWER</span>
-            {/* Cijfers nu met achtergrond voor maximale zichtbaarheid */}
-            <span style={{ fontSize: '12px', color: 'white', fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '5px' }}>
-                {spins} / {BASE_ENERGY}
-            </span>
         </div>
-        <div style={{ width: '85%', height: '14px', backgroundColor: '#111', borderRadius: '7px', overflow: 'hidden', border: '1px solid #444' }}>
+        
+        <div style={{ 
+            width: '100%', 
+            height: '24px', 
+            backgroundColor: '#111', 
+            borderRadius: '12px', 
+            border: '2px solid #444', 
+            overflow: 'hidden',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center'
+        }}>
+            {/* De visuele balk */}
             <div style={{ 
                 width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, 
                 height: '100%', 
                 backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', 
-                boxShadow: spins > 0 ? '0 0 10px rgba(0,255,204,0.5)' : 'none',
-                transition: 'width 0.3s ease'
+                boxShadow: spins > 0 ? 'inset 0 0 10px rgba(0,0,0,0.5)' : 'none',
+                transition: 'width 0.4s ease-out'
             }} />
+            
+            {/* DE CIJFERS - Nu gecentreerd over de balk */}
+            <div style={{ 
+                position: 'absolute', 
+                width: '100%', 
+                textAlign: 'center', 
+                color: 'white', 
+                fontSize: '12px', 
+                fontWeight: '900', 
+                textShadow: '1px 1px 2px black',
+                zIndex: 5
+            }}>
+                {spins.toLocaleString()} / {BASE_ENERGY}
+            </div>
         </div>
         
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
             <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
             <Button size="s" mode="bezeled" onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈' : '🔊'}</Button>
         </div>
@@ -162,7 +184,7 @@ export default function Home() {
          <Tappable onClick={claimDailyGift} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
       </div>
 
-      <div style={{ margin: '25px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '25px', border: '2px solid #ffcc00' }}>
+      <div style={{ margin: '20px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '25px', border: '2px solid #ffcc00' }}>
         {reels.map((s, i) => (<div key={i} style={{ fontSize: '36px', width: '65px', height: '85px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
       </div>
 
@@ -203,12 +225,6 @@ export default function Home() {
                             <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { setPoints(p => p - 5000); setSpins(s => s + 50); }}>BUY</Button>}>+50 ENERGY</Cell>
                         </Section>
                         <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK</Button>
-                    </div>
-                 ) : view === 'radar' ? (
-                    <div style={{ width: '100%' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR QUESTS</Headline>
-                        <Section header="DAILY"><Cell before={<span>✅</span>} after={<Button size="s" onClick={() => setPoints(p => p + 1000)}>CLAIM</Button>}>Daily Login</Cell></Section>
-                        <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '20px' }}>BACK</Button>
                     </div>
                  ) : (
                     <div style={{ width: '100%', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
