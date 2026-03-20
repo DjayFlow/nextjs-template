@@ -5,7 +5,7 @@ import { Button, Cell, Section, Headline, Tappable, Title } from '@telegram-apps
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
-const BASE_ENERGY = 50; // De standaard 50/50 energie
+const BASE_ENERGY = 50; 
 
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
@@ -31,30 +31,31 @@ export default function Home() {
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
-  // --- DATA SYNC & WELCOME GIFT ---
+  // --- 1. INITIAL LOAD & WELCOME GIFT ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
     const st = localStorage.getItem('owl_stage');
     const lg = localStorage.getItem('owl_last_gift');
-    const welcome = localStorage.getItem('owl_welcome_claimed');
+    const welcomeClaimed = localStorage.getItem('owl_welcome_claimed');
 
     if (p) setPoints(Number(p));
     if (st) setStage(Number(st));
     if (lg) setLastGift(Number(lg));
 
-    // Welkomstcadeau Logica: 500 energie voor nieuwe spelers
-    if (!welcome) {
-        setSpins(500);
-        localStorage.setItem('owl_welcome_claimed', 'true');
-        setEventMsg("🎁 WELCOME GIFT: +500 ENERGY!");
+    // Welkomstcadeau Logica
+    if (!welcomeClaimed) {
+      setSpins(500);
+      localStorage.setItem('owl_welcome_claimed', 'true');
+      setEventMsg("🎁 WELCOME: +500 ENERGY!");
     } else if (s) {
-        setSpins(Number(s));
+      setSpins(Number(s));
     }
 
     setIsLoaded(true);
   }, []);
 
+  // --- 2. SAVE DATA ---
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('owl_points', points.toString());
@@ -64,36 +65,41 @@ export default function Home() {
     }
   }, [points, spins, stage, lastGift, isLoaded]);
 
-  // DAGELIJKS CADEAU CHECK (Elke 24 uur +50)
+  // --- 3. DAILY GIFT CHECK (24H) ---
   useEffect(() => {
+    if (!isLoaded) return;
     const checkGift = () => {
-        const now = Date.now();
-        const oneDay = 24 * 60 * 60 * 1000;
-        if (now - lastGift > oneDay) {
-            setSpins(s => s + 50);
-            setLastGift(now);
-            setEventMsg("🎁 DAILY GIFT: +50 ENERGY!");
-        }
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+      if (now - lastGift > oneDay) {
+        setSpins(prev => prev + 50);
+        setLastGift(now);
+        setEventMsg("🎁 DAILY GIFT: +50 ENERGY!");
+      }
     };
-    if (isLoaded) checkGift();
+    checkGift();
+    const interval = setInterval(checkGift, 60000); // Check elke minuut
+    return () => clearInterval(interval);
   }, [isLoaded, lastGift]);
 
-  // AUTO SPIN LOGIC
+  // --- 4. AUTO SPIN ENGINE ---
   useEffect(() => {
-    let timer: any;
-    if (autoSpin && spins > 0 && !spinning) {
-      timer = setTimeout(() => spin(), 1200);
+    let timer: NodeJS.Timeout;
+    if (autoSpin && spins > 0 && !spinning && gameStarted) {
+      timer = setTimeout(() => {
+        spinAction();
+      }, 1200); 
     } else if (spins <= 0) {
       setAutoSpin(false);
     }
     return () => clearTimeout(timer);
-  }, [autoSpin, spins, spinning]);
+  }, [autoSpin, spins, spinning, gameStarted]);
 
-  const spin = () => {
+  const spinAction = () => {
     if (spinning || spins <= 0) return;
     
     setSpinning(true);
-    setSpins(s => s - 1);
+    setSpins(prev => prev - 1);
     setEventMsg('');
 
     const interval = setInterval(() => {
@@ -126,7 +132,7 @@ export default function Home() {
       <div style={{ width: '100%', padding: '0 20px', marginBottom: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}><span>🧪 ENERGY</span><span>{spins} / {BASE_ENERGY}</span></div>
         <div style={{ width: '100%', height: '10px', backgroundColor: '#111', borderRadius: '5px', overflow: 'hidden', border: '1px solid #333' }}>
-            <div style={{ width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, height: '100%', backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', boxShadow: '0 0 10px gold' }} />
+            <div style={{ width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, height: '100%', backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', boxShadow: spins > BASE_ENERGY ? '0 0 10px gold' : 'none' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
             <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
@@ -134,7 +140,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* SIDE NAVIGATION */}
       <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '130px', flexDirection: 'column' }}>
          <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
          <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
@@ -146,7 +151,7 @@ export default function Home() {
         {reels.map((s, i) => (<div key={i} style={{ fontSize: '36px', width: '65px', height: '85px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
       </div>
 
-      <button onClick={spin} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00', cursor: 'pointer' }}>SPIN</button>
+      <button onClick={spinAction} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00', cursor: 'pointer' }}>SPIN</button>
     </div>
   );
 
@@ -176,8 +181,7 @@ export default function Home() {
                         <Button onClick={() => setBossHp(h => h - 5000)} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK</Button>
                         <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '10px' }}>BACK</Button>
                     </div>
-                 ) : 
-                 view === 'shop' ? (
+                 ) : view === 'shop' ? (
                     <div style={{ width: '100%' }}>
                         <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 SHOP</Headline>
                         <Section header="RESOURCES">
@@ -185,8 +189,7 @@ export default function Home() {
                         </Section>
                         <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '20px' }}>BACK</Button>
                     </div>
-                 ) : 
-                 (
+                 ) : (
                     <div style={{ width: '100%', textAlign: 'center' }}>
                         <Headline style={{ color: '#ffcc00' }}>ℹ️ INFO</Headline>
                         <div style={{ padding: '20px' }}>"Respect as a foundation for Unity"</div>
@@ -197,10 +200,9 @@ export default function Home() {
         )}
 
         {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000 }}>{eventMsg}</div>
+          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000, boxShadow: '0 0 20px gold' }}>{eventMsg}</div>
         )}
       </div>
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </Page>
   );
 }
