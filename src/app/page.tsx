@@ -15,7 +15,7 @@ export default function Home() {
   const [points, setPoints] = useState<number>(14135);
   const [spins, setSpins] = useState<number>(50);
   const [stage, setStage] = useState<number>(1);
-  const [view, setView] = useState<'home' | 'radar' | 'fleet'>('home'); // 'fleet' toegevoegd
+  const [view, setView] = useState<'home' | 'radar' | 'fleet'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- UI STATE ---
@@ -27,7 +27,7 @@ export default function Home() {
 
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
-  // --- DATA LOADING & SYNC ---
+  // --- DATA LOADING ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
@@ -46,16 +46,6 @@ export default function Home() {
     }
   }, [points, spins, stage, isLoaded]);
 
-  // Passief inkomen van de vloot (elke 10 seconden)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (isLoaded) {
-        setPoints(p => p + 10); // Simpel passief inkomen
-      }
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [isLoaded]);
-
   const spin = () => {
     if (spinning || spins < multiplier) return;
     setSpinning(true);
@@ -68,13 +58,12 @@ export default function Home() {
 
     setTimeout(() => {
       clearInterval(interval);
-      const res = [icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]];
+      const res = [icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[icons.length - 1]];
       setReels(res);
       setSpinning(false);
       
       if (res[0] === res[1] && res[1] === res[2]) {
-        const isOwl = res[0] === '🦉';
-        const win = (isOwl ? 10000 : 2500) * multiplier * (1 + stage * 0.2);
+        const win = (res[0] === '🦉' ? 10000 : 2500) * multiplier * (1 + stage * 0.2);
         setPoints(p => p + Math.floor(win));
         setEventMsg(`🎉 BIG WIN! +${Math.floor(win).toLocaleString()}`);
       } else {
@@ -88,7 +77,7 @@ export default function Home() {
       <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '20px' }} weight="1">🚢 BOINK FLEET HUB</Headline>
       
       <Banner 
-        before={<Badge type="strong" variant="primary">INFO</Badge>}
+        before={<Badge>INFO</Badge>} // Gefixt: type="strong" verwijderd
         header="Passive Income"
         subheader="Your fleet earns points even when you are not spinning!"
       />
@@ -101,14 +90,6 @@ export default function Home() {
             description="Price: 10.000 Credits"
           >
             Scout Nest (LVL 1)
-          </Cell>
-          <Cell 
-            before={<span>🚢</span>}
-            after={<Button size="s" mode="outline">BUY</Button>}
-            subtitle="Income: +250/hr"
-            description="Price: 50.000 Credits"
-          >
-            Battle Wing
           </Cell>
       </Section>
 
@@ -133,7 +114,6 @@ export default function Home() {
 
         {view === 'home' ? (
           <>
-            {/* OWL NEST VIEW */}
             <div style={{ margin: '15px 0', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                <img src={`/image/owl_${stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: 'drop-shadow(0 0 15px gold)' }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/owl.png'; }} />
                <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold', marginTop: '5px' }}>LVL {stage} / 15</div>
@@ -144,14 +124,12 @@ export default function Home() {
               <div style={{ width: '100%', height: '12px', backgroundColor: '#111', borderRadius: '6px', overflow: 'hidden', border: '1px solid #333' }}><div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} /></div>
             </div>
 
-            {/* NAVIGATION BUTTONS (SIDEBAR) */}
             <div style={{ display: 'flex', gap: '15px', position: 'absolute', right: '15px', top: '150px', flexDirection: 'column' }}>
                <div onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>📡</div>
                <div onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>🚢</div>
                <div onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>🛒</div>
             </div>
 
-            {/* SLOTS AREA */}
             <div style={{ margin: '20px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
               {reels.map((s, i) => (<div key={i} style={{ fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
             </div>
