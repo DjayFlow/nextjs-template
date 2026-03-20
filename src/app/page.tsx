@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, List, Tappable, Progress } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, List, Tappable } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
+
+const MAX_SPINS = 100;
 
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
@@ -15,7 +17,7 @@ export default function Home() {
   const [view, setView] = useState<'home' | 'radar' | 'fleet' | 'boss'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- BOSS STATE (Generaal Vortigern) ---
+  // --- BOSS STATE (Vortigern) ---
   const [bossHp, setBossHp] = useState<number>(1000000);
   const maxBossHp = 1000000;
 
@@ -58,7 +60,7 @@ export default function Home() {
     }
   }, [points, spins, stage, fleetLevels, bossHp, isLoaded]);
 
-  // PASSIVE INCOME (Scaleert met level!)
+  // PASSIVE INCOME (Schaalt mee met honderden levels!)
   useEffect(() => {
     const interval = setInterval(() => {
       if (isLoaded) {
@@ -101,14 +103,14 @@ export default function Home() {
     if (spins >= multiplier) {
       setSpins(s => s - multiplier);
       setBossHp(h => Math.max(0, h - dmg));
-      setEventMsg(`💥 CRITICAL HIT! -${dmg.toLocaleString()} HP`);
+      setEventMsg(`💥 ATTACK! -${dmg.toLocaleString()} HP`);
       if (bossHp <= dmg) {
         setPoints(p => p + 500000);
         setBossHp(maxBossHp);
         setEventMsg("🏆 BOSS DEFEATED! +500.000 CREDITS");
       }
     } else {
-      setEventMsg("❌ NO ENERGY TO ATTACK!");
+      setEventMsg("❌ NO ENERGY!");
     }
   };
 
@@ -116,9 +118,8 @@ export default function Home() {
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards', textAlign: 'center' }}>
       <Headline style={{ color: '#ff3333', marginBottom: '10px' }}>💀 BOSS: GENERAAAL VORTIGERN</Headline>
       
-      {/* BOSS IMAGE (Technisch Dossier) */}
       <div style={{ position: 'relative', height: '220px', marginBottom: '20px', border: '2px solid #ff3333', borderRadius: '15px', overflow: 'hidden' }}>
-        <img src="/image/boss_vortigern.jpeg" alt="Boss" style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'sepia(1) hue-rotate(-50deg)' }} 
+        <img src="/image/boss_vortigern.jpeg" alt="Boss" style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
              onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/crow.png'; }} />
         <div style={{ position: 'absolute', bottom: 0, width: '100%', padding: '10px', background: 'linear-gradient(transparent, black)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 'bold' }}>
@@ -135,22 +136,6 @@ export default function Home() {
         <Button size="l" mode="filled" style={{ width: '100%', backgroundColor: '#ff3333' }} onClick={attackBoss}>
           ATTACK WITH {multiplier} SPINS
         </Button>
-      </Section>
-
-      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>RETURN TO NEST</Button>
-    </div>
-  );
-
-  const renderFleet = () => (
-    <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
-      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '20px' }}>🚢 BOINK FLEET HUB</Headline>
-      <div style={{ backgroundColor: 'rgba(255,204,0,0.1)', border: '1px solid #ffcc00', padding: '15px', borderRadius: '15px', marginBottom: '20px' }}>
-        <h4 style={{ margin: 0, color: '#ffcc00' }}>Active Fleet Income</h4>
-        <p style={{ fontSize: '24px', margin: '5px 0', fontWeight: '900' }}>🚀 Dynamic Rewards</p>
-      </div>
-      <Section header="SHIPS">
-          <Cell before={<span>🛶</span>} after={<Button size="s" onClick={() => setPoints(p => p - 10000)}>LVL UP</Button>} subtitle="Scout Nest">Level {fleetLevels.scout}</Cell>
-          <Cell before={<span>🚢</span>} after={<Button size="s" onClick={() => setPoints(p => p - 50000)}>BUY</Button>} subtitle="Battle Wing">Level {fleetLevels.battle}</Cell>
       </Section>
       <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK TO NEST</Button>
     </div>
@@ -173,7 +158,6 @@ export default function Home() {
 
         {view === 'home' ? (
           <>
-            {/* OWL DISPLAY (Looping images na Lvl 15) */}
             <div style={{ margin: '15px 0', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                <img 
                  src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} 
@@ -182,45 +166,51 @@ export default function Home() {
                  onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/owl.png'; }} 
                />
                <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: 'bold', marginTop: '5px' }}>
-                 LVL {stage} (GODLIKE)
+                 LVL {stage} (ONBREEKBAAR)
                </div>
             </div>
 
-            {/* SIDEBAR NAVIGATION */}
+            <div style={{ width: '100%', padding: '0 30px', marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}><span>🧪 ENERGY</span><span>{spins} / {MAX_SPINS}</span></div>
+              <div style={{ width: '100%', height: '12px', backgroundColor: '#111', borderRadius: '6px', overflow: 'hidden', border: '1px solid #333' }}><div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} /></div>
+            </div>
+
+            {/* NAVIGATION */}
             <div style={{ display: 'flex', gap: '15px', position: 'absolute', right: '15px', top: '150px', flexDirection: 'column' }}>
-               <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '50px', height: '50px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
+               <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '50px', height: '50px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
                <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
                <Tappable onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🚢</Tappable>
                <Tappable onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
             </div>
 
-            {/* SLOTS AREA */}
             <div style={{ margin: '40px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
               {reels.map((s, i) => (<div key={i} style={{ fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
             </div>
 
             <button onClick={spin} disabled={spinning} style={{ width: '140px', height: '140px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 12px 0 #997a00' }}>SPIN</button>
           </>
-        ) : view === 'boss' ? renderBoss() : view === 'radar' ? (
-          <div style={{ width: '100%', padding: '10px' }}><Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR</Headline><Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button></div>
-        ) : renderFleet()}
+        ) : view === 'boss' ? renderBoss() : (
+          <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK TO NEST</Button>
+        )}
 
         {showShop && (
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 1000, padding: '20px' }}>
-            <Button onClick={() => setShowShop(false)} mode="bezeled" style={{ marginBottom: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>CLOSE SHOP</Button>
-            <Section header="🆙 INFINITE EVOLUTION">
+            <Button onClick={() => setShowShop(false)} mode="bezeled" style={{ marginBottom: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>CLOSE</Button>
+            <Section header="🆙 INFINITE UPGRADES">
                <Cell 
                 subtitle={`${stage * 10000} Credits`} 
-                after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p => p - stage * 10000); setStage(s => s + 1); } }}>EVOLVE</Button>}
-               >UPGRADE TO LVL {stage + 1}</Cell>
+                after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p => p - stage * 10000); setStage(s => s + 1); } }}>UPGRADE</Button>}
+               >LEVEL {stage + 1}</Cell>
             </Section>
           </div>
         )}
 
         {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: view === 'boss' ? '#ff3333' : '#ffcc00', color: 'white', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000, textAlign: 'center' }}>{eventMsg}</div>
+          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000 }}>{eventMsg}</div>
         )}
+
       </div>
-    </div>
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+    </Page>
   );
 }
