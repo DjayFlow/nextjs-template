@@ -15,7 +15,7 @@ export default function Home() {
   const [points, setPoints] = useState<number>(14135);
   const [spins, setSpins] = useState<number>(50);
   const [stage, setStage] = useState<number>(1);
-  const [view, setView] = useState<'home' | 'radar' | 'fleet'>('home'); // <--- NIEUW: 'fleet' toegevoegd
+  const [view, setView] = useState<'home' | 'radar' | 'fleet'>('home'); // 'fleet' toegevoegd
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- UI STATE ---
@@ -27,14 +27,7 @@ export default function Home() {
 
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
-  // --- FLEET DATA (Voorbeeld vloot schepen) ---
-  const fleetShips = [
-    { name: "Scout Nest", income: 50, price: 10000, level: 1 },
-    { name: "Battle Wing", income: 250, price: 50000, level: 0 },
-    { name: "Unity Galleon", income: 1000, price: 250000, level: 0 },
-  ];
-
-  // --- DATA SYNC ---
+  // --- DATA LOADING & SYNC ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
@@ -57,7 +50,7 @@ export default function Home() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (isLoaded) {
-        setPoints(p => p + 10); // Simpel passief inkomen voor nu
+        setPoints(p => p + 10); // Simpel passief inkomen
       }
     }, 10000);
     return () => clearInterval(interval);
@@ -90,7 +83,6 @@ export default function Home() {
     }, 1000);
   };
 
-  // --- RENDER FLEET SCREEN ---
   const renderFleet = () => (
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
       <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '20px' }} weight="1">🚢 BOINK FLEET HUB</Headline>
@@ -102,22 +94,23 @@ export default function Home() {
       />
 
       <Section header="AVAILABLE SHIPS">
-        {fleetShips.map((ship, i) => (
           <Cell 
-            key={i}
             before={<span>🚢</span>}
-            after={<Button size="s" mode={points >= ship.price ? 'filled' : 'outline'}>UPGRADE</Button>}
-            subtitle={`Income: +${ship.income}/hr`}
-            description={`Price: ${ship.price.toLocaleString()} Credits`}
+            after={<Button size="s">UPGRADE</Button>}
+            subtitle="Income: +50/hr"
+            description="Price: 10.000 Credits"
           >
-            {ship.name} (LVL {ship.level})
+            Scout Nest (LVL 1)
           </Cell>
-        ))}
+          <Cell 
+            before={<span>🚢</span>}
+            after={<Button size="s" mode="outline">BUY</Button>}
+            subtitle="Income: +250/hr"
+            description="Price: 50.000 Credits"
+          >
+            Battle Wing
+          </Cell>
       </Section>
-
-      <div style={{ padding: '20px', textAlign: 'center', color: '#888', fontSize: '12px' }}>
-        <em>Respect as a foundation for Unity: Collaborate with others to boost fleet speed!</em>
-      </div>
 
       <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '10px' }}>BACK TO NEST</Button>
     </div>
@@ -151,11 +144,6 @@ export default function Home() {
               <div style={{ width: '100%', height: '12px', backgroundColor: '#111', borderRadius: '6px', overflow: 'hidden', border: '1px solid #333' }}><div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} /></div>
             </div>
 
-            {/* SLOTS AREA */}
-            <div style={{ margin: '20px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
-              {reels.map((s, i) => (<div key={i} style={{ fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
-            </div>
-
             {/* NAVIGATION BUTTONS (SIDEBAR) */}
             <div style={{ display: 'flex', gap: '15px', position: 'absolute', right: '15px', top: '150px', flexDirection: 'column' }}>
                <div onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>📡</div>
@@ -163,11 +151,14 @@ export default function Home() {
                <div onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '50px', height: '50px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}>🛒</div>
             </div>
 
-            {/* SPIN BUTTON */}
+            {/* SLOTS AREA */}
+            <div style={{ margin: '20px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
+              {reels.map((s, i) => (<div key={i} style={{ fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
+            </div>
+
             <button onClick={spin} disabled={spinning} style={{ width: '140px', height: '140px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 12px 0 #997a00' }}>SPIN</button>
           </>
         ) : view === 'radar' ? (
-          /* RADAR VIEW LOGIC (Zelfde als voorheen) */
           <div style={{ width: '100%', padding: '10px' }}>
             <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR QUEST</Headline>
             <Section header="DAILY"><Cell after={<Button size="s">CLAIM</Button>}>Daily Check-in</Cell></Section>
