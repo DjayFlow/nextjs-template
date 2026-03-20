@@ -1,69 +1,80 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, List, Cell, Progress } from '@telegram-apps/telegram-ui';
+import { Button, List, Cell, Modal, AppRoot } from '@telegram-apps/telegram-ui';
 import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
-const MAX_SPINS = 50;
 const XP_PER_LEVEL = 10000;
 
 export default function Home() {
-  // --- PERSISTENT STATE ---
+  // --- PERSISTENT DATA ---
   const [points, setPoints] = useState<number>(13344);
   const [spins, setSpins] = useState<number>(50);
-  const [shields, setShields] = useState<number>(0);
-  const [xp, setXp] = useState<number>(0);
+  const [maxSpins, setMaxSpins] = useState<number>(50);
   const [level, setLevel] = useState<number>(1);
+  const [xp, setXp] = useState<number>(0);
+  const [shields, setShields] = useState<number>(0);
+  const [lastGiftDate, setLastGiftDate] = useState<string>("");
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- UI STATE ---
-  const [multiplier, setMultiplier] = useState(1);
   const [spinning, setSpinning] = useState(false);
   const [autoSpin, setAutoSpin] = useState(false);
+  const [multiplier, setMultiplier] = useState(1);
   const [reels, setReels] = useState(['🦉', '🎰', '💎']);
   const [isMuted, setIsMuted] = useState(false);
   const [eventMsg, setEventMsg] = useState('');
-  const [isAttacking, setIsAttacking] = useState(false);
+  const [showShop, setShowShop] = useState(false);
 
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
+  const energyPacks = [50, 100, 130, 150, 175, 200, 250, 375, 500, 750, 1000];
 
-  // 1. Data laden uit browsergeheugen
+  // 1. Laden uit geheugen
   useEffect(() => {
-    const p = localStorage.getItem('owl_points');
-    const s = localStorage.getItem('owl_spins');
-    const sh = localStorage.getItem('owl_shields');
-    const l = localStorage.getItem('owl_level');
-    const x = localStorage.getItem('owl_xp');
-    
-    if (p) setPoints(Number(p));
-    if (s) setSpins(Number(s));
-    if (sh) setShields(Number(sh));
-    if (l) setLevel(Number(l));
-    if (x) setXp(Number(x));
-    
+    const saved = {
+      p: localStorage.getItem('owl_p'),
+      s: localStorage.getItem('owl_s'),
+      ms: localStorage.getItem('owl_ms'),
+      l: localStorage.getItem('owl_l'),
+      x: localStorage.getItem('owl_x'),
+      sh: localStorage.getItem('owl_sh'),
+      gd: localStorage.getItem('owl_gd')
+    };
+    if (saved.p) setPoints(Number(saved.p));
+    if (saved.s) setSpins(Number(saved.s));
+    if (saved.ms) setMaxSpins(Number(saved.ms));
+    if (saved.l) setLevel(Number(saved.l));
+    if (saved.x) setXp(Number(saved.x));
+    if (saved.sh) setShields(Number(saved.sh));
+    if (saved.gd) setLastGiftDate(saved.gd);
     setIsLoaded(true);
   }, []);
 
-  // 2. Data direct opslaan
+  // 2. Opslaan
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('owl_points', points.toString());
-      localStorage.setItem('owl_spins', spins.toString());
-      localStorage.setItem('owl_shields', shields.toString());
-      localStorage.setItem('owl_level', level.toString());
-      localStorage.setItem('owl_xp', xp.toString());
+      localStorage.setItem('owl_p', points.toString());
+      localStorage.setItem('owl_s', spins.toString());
+      localStorage.setItem('owl_ms', maxSpins.toString());
+      localStorage.setItem('owl_l', level.toString());
+      localStorage.setItem('owl_x', xp.toString());
+      localStorage.setItem('owl_sh', shields.toString());
+      localStorage.setItem('owl_gd', lastGiftDate);
     }
-  }, [points, spins, shields, level, xp, isLoaded]);
+  }, [points, spins, maxSpins, level, xp, shields, lastGiftDate, isLoaded]);
 
-  // 3. Snelle Energie herstel (Boinkers vibe)
+  // 3. AUTO-SPIN LOGIC (FIXED)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSpins(p => p < MAX_SPINS ? p + 1 : p);
-    }, 30000); // Elke 30 sec 1 spin erbij
-    return () => clearInterval(interval);
-  }, []);
+    let timer: NodeJS.Timeout;
+    if (autoSpin && !spinning && spins >= multiplier) {
+      timer = setTimeout(() => spin(), 1200);
+    } else if (autoSpin && spins < multiplier) {
+      setAutoSpin(false);
+    }
+    return () => clearTimeout(timer);
+  }, [autoSpin, spinning, spins, multiplier]);
 
   const playSound = (name: string) => {
     if (isMuted) return;
@@ -88,12 +99,7 @@ export default function Home() {
   };
 
   const spin = () => {
-    if (spinning || spins < multiplier) {
-      if (spins < multiplier) setEventMsg("❌ NO ENERGY! CLAIM DAILY GIFT 🎁");
-      setAutoSpin(false);
-      return;
-    }
-
+    if (spinning || spins < multiplier) return;
     if (!isMuted && (!bgMusicRef.current || bgMusicRef.current.paused)) toggleMusic();
 
     playSound('spin');
@@ -110,141 +116,159 @@ export default function Home() {
       const res = [icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]];
       setReels(res);
       setSpinning(false);
-
-      if (res[0] === res[1] && res[1] === res[2]) {
-        handleWin(res[0]);
-      } else {
-        addXp(5 * multiplier);
-        setPoints(p => p + (5 * multiplier));
+      
+      if (res[0] === res[1] && res[1] === res[2]) handleWin(res[0]);
+      else {
+        const baseWin = 5 * multiplier * (1 + level * 0.1);
+        setPoints(p => p + baseWin);
         playSound('points');
       }
     }, 1000);
-  };
-
-  const addXp = (amt: number) => {
-    setXp(current => {
-      const total = current + amt;
-      if (total >= XP_PER_LEVEL) {
-        setLevel(l => l + 1);
-        playSound('level');
-        setEventMsg(`🚀 LEVEL UP! NU LEVEL ${level + 1}`);
-        return 0;
-      }
-      return total;
-    });
   };
 
   const handleWin = (symbol: string) => {
     let winAmt = 500;
     if (symbol === '🦉') winAmt = 10000;
     else if (symbol === '🎰') winAmt = 5000;
-    else if (symbol === '💎') winAmt = 2500;
-
-    setPoints(p => p + (winAmt * multiplier));
-    addXp(winAmt / 10);
-    setEventMsg(`🎉 BIG WIN! +${winAmt * multiplier}`);
+    
+    const finalWin = winAmt * multiplier * (1 + level * 0.2);
+    setPoints(p => p + finalWin);
+    setEventMsg(`🎉 BIG WIN! +${finalWin.toLocaleString()}`);
     playSound(symbol === '🦉' ? 'victory' : 'win');
     setTimeout(() => playSound('coins'), 500);
   };
 
   const claimDaily = () => {
-    setSpins(MAX_SPINS);
+    const today = new Date().toDateString();
+    if (lastGiftDate === today) {
+      setEventMsg("⏳ GIFT AL GECLAIMD! KOM MORGEN TERUG");
+      playSound('click');
+      return;
+    }
+    setSpins(s => Math.min(s + 50, maxSpins));
+    setLastGiftDate(today);
     setEventMsg("🎁 DAILY 50 SPINS GRANTED!");
     playSound('reward');
   };
 
+  const buyEnergy = (amount: number) => {
+    const cost = amount * 10;
+    if (points < cost) {
+      setEventMsg("❌ NIET GENOEG CREDITS!");
+      playSound('click');
+      return;
+    }
+    setPoints(p => p - cost);
+    setSpins(s => s + amount);
+    setMaxSpins(ms => Math.max(ms, spins + amount));
+    setEventMsg(`🔋 +${amount} ENERGY GEKOCHT!`);
+    playSound('payout');
+  };
+
+  const upgradeOwl = () => {
+    const cost = level * 5000;
+    if (points < cost) {
+       setEventMsg(`❌ UPGRADE KOST ${cost.toLocaleString()}`);
+       return;
+    }
+    setPoints(p => p - cost);
+    setLevel(l => l + 1);
+    setEventMsg(`🦉 OWL UPGRADED NAAR LVL ${level + 1}!`);
+    playSound('level');
+  };
+
   return (
     <Page>
-      <div style={{ 
-        backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', 
-        minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', 
-        alignItems: 'center', padding: '10px', overflow: 'hidden'
-      }}>
+      <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px', overflow: 'hidden' }}>
         
-        {/* --- PRO HEADER --- */}
+        {/* TOP HEADER */}
         <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '18px', borderBottom: '3px solid #ffcc00', marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
               <span style={{ fontSize: '20px' }}>💰</span>
-              <span style={{ fontWeight: '900', color: '#ffcc00', fontSize: '18px' }}>{points.toLocaleString()}</span>
+              <span style={{ fontWeight: '900', color: '#ffcc00' }}>{points.toLocaleString()}</span>
             </div>
             <div style={{ display: 'flex', gap: '5px' }}>
-              {[...Array(3)].map((_, i) => (
-                <span key={i} style={{ opacity: i < shields ? 1 : 0.2, filter: 'drop-shadow(0 0 5px blue)' }}>🛡️</span>
-              ))}
+              {[...Array(3)].map((_, i) => <span key={i} style={{ opacity: i < shields ? 1 : 0.2 }}>🛡️</span>)}
             </div>
             <TonConnectButton />
           </div>
-          {/* PET LEVEL BAR */}
-          <div style={{ width: '100%', height: '6px', backgroundColor: '#222', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
-            <div style={{ width: `${(xp / XP_PER_LEVEL) * 100}%`, height: '100%', backgroundColor: '#a020f0', boxShadow: '0 0 10px #a020f0' }} />
+          <div style={{ width: '100%', height: '4px', backgroundColor: '#222', borderRadius: '2px', marginTop: '8px' }}>
+            <div style={{ width: `${(xp / XP_PER_LEVEL) * 100}%`, height: '100%', backgroundColor: '#a020f0' }} />
           </div>
         </div>
 
-        {/* SIDE BUTTONS (QUESTS/SHOP) */}
+        {/* SIDE BUTTONS */}
         <div style={{ position: 'absolute', left: '10px', top: '120px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
            <div style={{ textAlign: 'center' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🛰️</div><span style={{ fontSize: '8px' }}>RADAR</span></div>
            <div style={{ textAlign: 'center' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🚢</div><span style={{ fontSize: '8px' }}>FLEET</span></div>
         </div>
-
         <div style={{ position: 'absolute', right: '10px', top: '120px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-           <div style={{ textAlign: 'center' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🛒</div><span style={{ fontSize: '8px' }}>SHOP</span></div>
-           <div onClick={toggleMusic} style={{ textAlign: 'center' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>{isMuted ? '🔇' : '🎵'}</div><span style={{ fontSize: '8px' }}>MUSIC</span></div>
+           <div onClick={() => setShowShop(true)} style={{ textAlign: 'center', cursor: 'pointer' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🛒</div><span style={{ fontSize: '8px' }}>SHOP</span></div>
+           <div onClick={toggleMusic} style={{ textAlign: 'center', cursor: 'pointer' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🎵</div><span style={{ fontSize: '8px' }}>MUSIC</span></div>
         </div>
 
-        {/* ENERGY BAR */}
+        {/* ENERGY POWER BAR */}
         <div style={{ width: '100%', padding: '0 40px', marginTop: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold', marginBottom: '4px' }}>
             <span>🧪 ENERGY POWER</span>
-            <span>{spins} / {MAX_SPINS}</span>
+            <span>{spins} / {maxSpins}</span>
           </div>
           <div style={{ width: '100%', height: '12px', backgroundColor: '#111', borderRadius: '6px', overflow: 'hidden', border: '1px solid #333' }}>
-            <div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc', boxShadow: '0 0 15px #00ffcc' }} />
+            <div style={{ width: `${(spins / maxSpins) * 100}%`, height: '100%', backgroundColor: '#00ffcc', boxShadow: '0 0 15px #00ffcc' }} />
           </div>
         </div>
 
-        {/* SLOTS */}
-        <div style={{ margin: '40px 0', display: 'flex', gap: '12px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00', boxShadow: '0 0 50px black' }}>
+        {/* SLOT MACHINE */}
+        <div style={{ margin: '30px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '20px', borderRadius: '35px', border: '3px solid #ffcc00' }}>
           {reels.map((s, i) => (
-            <div key={i} style={{ fontSize: '50px', width: '80px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(6px)' : 'none', border: '1px solid #222' }}>{s}</div>
+            <div key={i} style={{ fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(6px)' : 'none' }}>{s}</div>
           ))}
         </div>
 
         {/* MULTIPLIERS */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           {[1, 2, 3, 5, 10].map(m => (
-            <button key={m} onClick={() => { setMultiplier(m); playSound('click'); }} style={{ width: '45px', height: '45px', borderRadius: '12px', border: 'none', backgroundColor: multiplier === m ? '#ffcc00' : '#1a1a1a', color: multiplier === m ? 'black' : 'white', fontWeight: '900', boxShadow: multiplier === m ? '0 0 15px #ffcc00' : 'none' }}>x{m}</button>
+            <button key={m} onClick={() => { setMultiplier(m); playSound('click'); }} style={{ width: '42px', height: '42px', borderRadius: '10px', border: 'none', backgroundColor: multiplier === m ? '#ffcc00' : '#1a1a1a', color: multiplier === m ? 'black' : 'white', fontWeight: '900' }}>x{m}</button>
           ))}
         </div>
 
         {/* CONTROLS */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
           <div onClick={() => { setAutoSpin(!autoSpin); playSound('powerup'); }} style={{ textAlign: 'center', cursor: 'pointer' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: autoSpin ? '#ffcc00' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444', fontSize: '24px' }}>🔄</div>
+            <div style={{ width: '55px', height: '55px', borderRadius: '50%', backgroundColor: autoSpin ? '#ffcc00' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444' }}>🔄</div>
             <span style={{ fontSize: '10px', color: autoSpin ? '#ffcc00' : '#888', fontWeight: 'bold' }}>AUTO</span>
           </div>
-
-          <button onClick={spin} disabled={spinning} style={{ width: '160px', height: '160px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '36px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 15px 0 #997a00, 0 20px 40px rgba(0,0,0,0.6)' }}>SPIN</button>
-
+          <button onClick={spin} disabled={spinning} style={{ width: '150px', height: '150px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 12px 0 #997a00' }}>SPIN</button>
           <div onClick={claimDaily} style={{ textAlign: 'center', cursor: 'pointer' }}>
-             <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444', fontSize: '24px' }}>🎁</div>
+             <div style={{ width: '55px', height: '55px', borderRadius: '50%', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444' }}>🎁</div>
              <span style={{ fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>GIFT</span>
           </div>
         </div>
 
-        {/* FOOTER INFO */}
-        <div style={{ marginTop: 'auto', marginBottom: '20px', textAlign: 'center' }}>
-           <p style={{ color: '#ffcc00', fontSize: '14px', fontWeight: 'bold', margin: 0, textShadow: '2px 2px 0 black' }}>OWL LEVEL: {level}</p>
-           <p style={{ color: '#888', fontSize: '10px', margin: 0 }}>THE UNBREAKABLE NEST • STAGE 1</p>
+        <div onClick={upgradeOwl} style={{ marginTop: '20px', cursor: 'pointer', textAlign: 'center', backgroundColor: 'rgba(255,204,0,0.2)', padding: '10px 20px', borderRadius: '15px', border: '1px solid #ffcc00' }}>
+           <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>OWL LEVEL: {level} 🆙</p>
+           <p style={{ margin: 0, fontSize: '10px', opacity: 0.7 }}>UPGRADE VOOR {(level * 5000).toLocaleString()}</p>
         </div>
 
-        {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: '900', fontSize: '20px', zIndex: 1000, boxShadow: '0 0 50px gold', animation: 'pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}>{eventMsg}</div>
+        {/* SHOP MODAL */}
+        {showShop && (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1000, padding: '20px', display: 'flex', flexDirection: 'column' }}>
+            <Button onClick={() => setShowShop(false)} style={{ marginBottom: '20px' }}>TERUG</Button>
+            <h1 style={{ color: '#ffcc00', textAlign: 'center' }}>🔋 ENERGY SHOP</h1>
+            <List>
+              {energyPacks.map(amt => (
+                <Cell key={amt} onClick={() => buyEnergy(amt)} subtitle={`KOST ${(amt * 10).toLocaleString()} CREDITS`} after={<Button size="s">KOOP</Button>}>
+                  +{amt} ENERGY
+                </Cell>
+              ))}
+            </List>
+          </div>
         )}
 
-        <style>{`
-          @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
-        `}</style>
+        {eventMsg && (
+          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: '900', fontSize: '18px', zIndex: 2000 }}>{eventMsg}</div>
+        )}
       </div>
     </Page>
   );
