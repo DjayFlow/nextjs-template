@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, Tappable, Title, Info } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, Tappable, Title } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -29,7 +29,6 @@ export default function Home() {
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
-  // SFX Functie
   const playSfx = (file: string) => {
     if (!isMuted) {
       const audio = new Audio(`/sounds/${file}`);
@@ -37,21 +36,18 @@ export default function Home() {
     }
   };
 
-  // --- INITIAL LOAD & WELCOME ---
+  // --- DATA SYNC ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
     const st = localStorage.getItem('owl_stage');
     const lg = localStorage.getItem('owl_last_gift');
-    const fl = localStorage.getItem('owl_fleet');
     const welcome = localStorage.getItem('owl_welcome_claimed');
 
     if (p) setPoints(Number(p));
     if (st) setStage(Number(st));
     if (lg) setLastGift(Number(lg));
-    if (fl) { try { setFleetLevels(JSON.parse(fl)); } catch(e) {} }
 
-    // Welkomstcadeau: 500 energie
     if (!welcome) {
       setSpins(500);
       localStorage.setItem('owl_welcome_claimed', 'true');
@@ -62,29 +58,27 @@ export default function Home() {
     setIsLoaded(true);
   }, []);
 
-  // SAVE DATA
   useEffect(() => {
     if (isLoaded) {
       localStorage.setItem('owl_points', points.toString());
       localStorage.setItem('owl_spins', spins.toString());
       localStorage.setItem('owl_stage', stage.toString());
       localStorage.setItem('owl_last_gift', lastGift.toString());
-      localStorage.setItem('owl_fleet', JSON.stringify(fleetLevels));
     }
-  }, [points, spins, stage, lastGift, fleetLevels, isLoaded]);
+  }, [points, spins, stage, lastGift, isLoaded]);
 
-  // CADEAU LOGICA (🎁)
+  // CADEAU LOGICA
   const claimDailyGift = () => {
     const now = Date.now();
     const cooldown = 24 * 60 * 60 * 1000;
     if (now - lastGift > cooldown) {
         setSpins(s => s + 50);
         setLastGift(now);
-        playSfx('gift.mp3');
-        setEventMsg("🎁 DAILY GIFT CLAIMED: +50 ENERGY!");
+        playSfx('win.mp3');
+        setEventMsg("🎁 DAILY GIFT: +50 ENERGY!");
     } else {
-        const remaining = Math.ceil((cooldown - (now - lastGift)) / (60 * 60 * 1000));
-        setEventMsg(`⏳ NEXT GIFT IN ${remaining} HOURS`);
+        const hours = Math.ceil((cooldown - (now - lastGift)) / (1000 * 60 * 60));
+        setEventMsg(`⏳ NEXT GIFT IN ${hours}H`);
     }
   };
 
@@ -134,28 +128,38 @@ export default function Home() {
          <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: '900', marginTop: '5px' }}>LVL {stage} | UNBREAKABLE</div>
       </div>
 
-      {/* ENERGY BALK MET TEKSTLABEL */}
-      <div style={{ width: '100%', padding: '0 20px', marginBottom: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>
-            <span>🧪 ENERGY POWER</span>
-            <span style={{ fontSize: '12px' }}>{spins} / {BASE_ENERGY}</span>
+      {/* GEFIXTE ENERGY BALK SECTIE */}
+      <div style={{ width: '100%', padding: '0 25px', marginBottom: '10px', position: 'relative' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+            <span style={{ fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>🧪 ENERGY POWER</span>
+            {/* Cijfers nu met achtergrond voor maximale zichtbaarheid */}
+            <span style={{ fontSize: '12px', color: 'white', fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', padding: '2px 8px', borderRadius: '5px' }}>
+                {spins} / {BASE_ENERGY}
+            </span>
         </div>
-        <div style={{ width: '100%', height: '12px', backgroundColor: '#111', borderRadius: '6px', overflow: 'hidden', border: '1px solid #333' }}>
-            <div style={{ width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, height: '100%', backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', boxShadow: spins > 0 ? '0 0 10px #00ffcc' : 'none' }} />
+        <div style={{ width: '85%', height: '14px', backgroundColor: '#111', borderRadius: '7px', overflow: 'hidden', border: '1px solid #444' }}>
+            <div style={{ 
+                width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, 
+                height: '100%', 
+                backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', 
+                boxShadow: spins > 0 ? '0 0 10px rgba(0,255,204,0.5)' : 'none',
+                transition: 'width 0.3s ease'
+            }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
+        
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
             <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
             <Button size="s" mode="bezeled" onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈' : '🔊'}</Button>
         </div>
       </div>
 
-      {/* SIDEBAR MET CADEAU (🎁) */}
-      <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '130px', flexDirection: 'column' }}>
-         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
+      {/* SIDEBAR NAVIGATION */}
+      <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '130px', flexDirection: 'column', zIndex: 100 }}>
+         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
          <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
          <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
          <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
-         <Tappable onClick={claimDailyGift} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', animation: 'pulse 2s infinite' }}>🎁</Tappable>
+         <Tappable onClick={claimDailyGift} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
       </div>
 
       <div style={{ margin: '25px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '25px', border: '2px solid #ffcc00' }}>
@@ -189,29 +193,27 @@ export default function Home() {
                     <div style={{ width: '100%', textAlign: 'center' }}>
                         <Headline style={{ color: '#ff3333' }}>💀 BOSS: VORTIGERN</Headline>
                         <img src="/image/boss_vortigern.jpeg" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
-                        <Button size="l" onClick={() => { playSfx('click.mp3'); setBossHp(h => Math.max(0, h - 10000)); }} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK BOSS</Button>
+                        <Button size="l" onClick={() => setBossHp(h => Math.max(0, h - 10000))} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK BOSS</Button>
                         <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '10px' }}>BACK</Button>
                     </div>
                  ) : view === 'shop' ? (
                     <div style={{ width: '100%' }}>
                         <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 PREMIUM SHOP</Headline>
                         <Section header="RESOURCES">
-                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000) { setPoints(p => p - 5000); setSpins(s => s + 50); playSfx('gift.mp3'); } }}>BUY</Button>}>+50 ENERGY</Cell>
-                            <Cell subtitle="10.000 Credits" after={<Button size="s" onClick={() => { if(points >= 10000) { setPoints(p => p - 10000); setStage(s => s + 1); playSfx('win.mp3'); } }}>UPGRADE</Button>}>EVOLVE OWL</Cell>
+                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { setPoints(p => p - 5000); setSpins(s => s + 50); }}>BUY</Button>}>+50 ENERGY</Cell>
                         </Section>
                         <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK</Button>
                     </div>
                  ) : view === 'radar' ? (
                     <div style={{ width: '100%' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR HUB</Headline>
-                        <Section header="DAILY MISSIONS"><Cell before={<span>✅</span>} after={<Button size="s" onClick={() => { setPoints(p => p + 1000); setEventMsg("CLAIMED!"); }}>CLAIM</Button>}>Daily Check-in</Cell></Section>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR QUESTS</Headline>
+                        <Section header="DAILY"><Cell before={<span>✅</span>} after={<Button size="s" onClick={() => setPoints(p => p + 1000)}>CLAIM</Button>}>Daily Login</Cell></Section>
                         <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '20px' }}>BACK</Button>
                     </div>
                  ) : (
                     <div style={{ width: '100%', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
                         <Headline style={{ color: '#ffcc00' }}>ℹ️ WIKI</Headline>
-                        <div style={{ padding: '20px', fontStyle: 'italic' }}>"Respect as a foundation for Unity"</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', padding: '10px' }}>
+                        <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                             {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(i => (
                                 <div key={i}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '8px' }} /><span style={{ fontSize: '10px' }}>LVL {i}</span></div>
                             ))}
@@ -223,12 +225,9 @@ export default function Home() {
         )}
 
         {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000, boxShadow: '0 0 20px gold', textAlign: 'center' }}>{eventMsg}</div>
+          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000, textAlign: 'center', boxShadow: '0 0 20px gold' }}>{eventMsg}</div>
         )}
       </div>
-      <style>{`
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-      `}</style>
     </Page>
   );
 }
