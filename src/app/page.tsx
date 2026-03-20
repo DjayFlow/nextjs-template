@@ -16,8 +16,6 @@ export default function Home() {
   const [spins, setSpins] = useState<number>(50);
   const [maxSpins, setMaxSpins] = useState<number>(50);
   const [level, setLevel] = useState<number>(1);
-  const [xp, setXp] = useState<number>(0);
-  const [shields, setShields] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- UI STATE ---
@@ -94,9 +92,7 @@ export default function Home() {
   const spin = () => {
     if (spinning || spins < multiplier) return;
     
-    // Start muziek bij de eerste spin
     startMusic();
-
     playSound('spin');
     setSpinning(true);
     setSpins(p => p - multiplier);
@@ -140,14 +136,10 @@ export default function Home() {
       setEventMsg(`🔋 +${pack.amount} ENERGY ADDED!`);
       playSound('payout');
     } else {
-      // --- REAL MONEY / TON TRANSACTION ---
       setEventMsg("🔗 CONNECTING WALLET...");
-      // Hier roepen we de TonConnect UI aan voor een echte betaling
       try {
-        // Dit opent de wallet voor de gebruiker
         await tonConnectUI.connectWallet();
         setEventMsg("💰 TRANSACTION PENDING...");
-        // In een echte app stuur je hier de transactie naar de blockchain
       } catch (e) {
         setEventMsg("❌ TRANSACTION CANCELLED");
       }
@@ -158,7 +150,7 @@ export default function Home() {
     <Page>
       <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px' }}>
         
-        {/* BOINKERS HEADER */}
+        {/* HEADER AREA */}
         <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '20px', borderBottom: '3px solid #ffcc00', marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
@@ -193,7 +185,7 @@ export default function Home() {
         </div>
 
         {/* SLOTS AREA */}
-        <div style={{ margin: '40px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
+        <div style={{ margin: '30px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
           {reels.map((s, i) => (
             <div key={i} style={{ fontSize: '50px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>
           ))}
@@ -221,10 +213,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* SHOP MODAL */}
+        {/* SHOP MODAL - GEFIXTE VERSIE */}
         {showShop && (
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1000, padding: '20px', display: 'flex', flexDirection: 'column' }}>
-            <Button onClick={() => setShowShop(false)} mode="beveled" style={{ marginBottom: '20px', backgroundColor: '#ffcc00', color: 'black' }}>BACK TO NEST</Button>
+            <Button onClick={() => setShowShop(false)} mode="bezeled" style={{ marginBottom: '20px', backgroundColor: '#ffcc00', color: 'black' }}>BACK TO NEST</Button>
             <h1 style={{ color: '#ffcc00', textAlign: 'center', fontSize: '28px', marginBottom: '20px' }}>🔋 ENERGY SHOP</h1>
             <Section header="FREE & CREDITS">
                <Cell onClick={() => handlePurchase(energyShop[0])} subtitle="5.000 Credits" after={<Button size="s">BUY</Button>}>50 ENERGY</Cell>
