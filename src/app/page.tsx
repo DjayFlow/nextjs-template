@@ -6,7 +6,6 @@ import { TonConnectButton } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
 const MAX_SPINS = 50;
-const REGEN_TIME_MS = 180000; 
 
 export default function Home() {
   // Sync met jouw huidige stats
@@ -15,10 +14,11 @@ export default function Home() {
   const [multiplier, setMultiplier] = useState(1);
   const [autoSpin, setAutoSpin] = useState(false);
   const [spinning, setSpinning] = useState(false);
-  const [reels, setReels] = useState(['🔨', '🦹', '💎']); // Laatste symbolen
+  const [reels, setReels] = useState(['🔨', '🦹', '💎']); 
   
   const [stage, setStage] = useState(1);
   const [shake, setShake] = useState(false);
+  const [eventMsg, setEventMsg] = useState('');
 
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
@@ -51,6 +51,7 @@ export default function Home() {
     triggerHaptic('medium');
     setSpinning(true);
     setSpins(p => p - multiplier);
+    setEventMsg('');
 
     const interval = setInterval(() => {
       setReels([icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]]);
@@ -63,10 +64,17 @@ export default function Home() {
       setSpinning(false);
 
       if (res[0] === res[1] && res[1] === res[2]) {
-        if (res[0] === '🔨') setShake(true);
-        setTimeout(() => setShake(false), 500);
+        if (res[0] === '🔨') {
+            setShake(true);
+            setEventMsg(`🔨 ATTACK! +${1500 * multiplier}`);
+            setTimeout(() => setShake(false), 500);
+        } else if (res[0] === '🦹') {
+            setEventMsg(`🦹 RAID! +${1000 * multiplier}`);
+        } else {
+            setEventMsg(`🎉 WIN! +${500 * multiplier}`);
+        }
         
-        const win = res[0] === '🦹' ? 1000 : 250;
+        const win = res[0] === '🦹' ? 1000 : (res[0] === '🔨' ? 1500 : 500);
         setPoints(p => p + (win * multiplier));
         playSound('win');
         triggerHaptic('success');
@@ -80,7 +88,7 @@ export default function Home() {
   return (
     <Page>
       <div style={{ 
-        // --- GEFIXTE ACHTERGROND NAAM ---
+        // EXACTE NAAM ZONDER EXTRA PUNTEN
         backgroundImage: 'url(/sounds/high_quality_bg.png)', 
         backgroundSize: 'cover', 
         backgroundPosition: 'center',
@@ -92,36 +100,42 @@ export default function Home() {
         alignItems: 'center', 
         padding: '15px',
         overflow: 'hidden',
-        transform: shake ? 'scale(1.05)' : 'none',
+        transform: shake ? 'scale(1.1) rotate(2deg)' : 'none',
         transition: 'transform 0.1s'
       }}>
         
-        <div style={{ textAlign: 'center', marginTop: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '5px 15px', borderRadius: '20px' }}>
+        <div style={{ textAlign: 'center', marginTop: '10px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '5px 15px', borderRadius: '20px' }}>
           <p style={{ color: '#ffcc00', letterSpacing: '2px', fontWeight: 'bold', fontSize: '10px', margin: 0 }}>STAGE {stage}</p>
           <h2 style={{ fontSize: '18px', margin: 0 }}>The Owl's Nest</h2>
         </div>
 
-        <div style={{ textAlign: 'center', margin: '20px 0', backgroundColor: 'rgba(0,0,0,0.6)', padding: '10px 20px', borderRadius: '30px' }}>
+        <div style={{ textAlign: 'center', margin: '20px 0', backgroundColor: 'rgba(0,0,0,0.7)', padding: '10px 20px', borderRadius: '30px', border: '1px solid rgba(255,204,0,0.3)' }}>
           <h1 style={{ fontSize: '55px', color: '#ffcc00', margin: 0, fontWeight: '900', textShadow: '0 0 20px rgba(255,204,0,0.5)' }}>{points}</h1>
           <p style={{ color: '#aaa', fontSize: '10px', letterSpacing: '2px' }}>UNITY CREDITS</p>
         </div>
 
+        {eventMsg && (
+          <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '10px', borderRadius: '12px', fontWeight: 'bold', marginBottom: '15px', animation: 'bounce 0.5s infinite alternate' }}>
+            {eventMsg}
+          </div>
+        )}
+
         <div style={{ 
-          display: 'flex', gap: '8px', backgroundColor: 'rgba(255,255,255,0.05)', padding: '18px', 
-          borderRadius: '30px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: 'inset 0 0 30px black' 
+          display: 'flex', gap: '8px', backgroundColor: 'rgba(255,255,255,0.08)', padding: '18px', 
+          borderRadius: '30px', border: '1px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 30px black' 
         }}>
           {reels.map((s, i) => (
             <div key={i} style={{ 
               fontSize: '40px', width: '70px', height: '90px', backgroundColor: '#111', 
               display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px',
-              filter: spinning ? 'blur(2px)' : 'none', transition: 'filter 0.1s'
+              filter: spinning ? 'blur(3px)' : 'none', transition: 'filter 0.05s'
             }}>{s}</div>
           ))}
         </div>
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
           {[1, 2, 3, 5].map(m => (
-            <button key={m} onClick={() => setMultiplier(m)} style={{
+            <button key={m} onClick={() => { setMultiplier(m); triggerHaptic('light'); }} style={{
               width: '40px', height: '40px', borderRadius: '10px', border: 'none',
               backgroundColor: multiplier === m ? '#ffcc00' : '#222', color: multiplier === m ? 'black' : 'white', fontWeight: 'bold', fontSize: '14px'
             }}>x{m}</button>
@@ -129,7 +143,7 @@ export default function Home() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '25px' }}>
-          <div onClick={() => setAutoSpin(!autoSpin)} style={{ cursor: 'pointer', textAlign: 'center' }}>
+          <div onClick={() => { setAutoSpin(!autoSpin); triggerHaptic('medium'); }} style={{ cursor: 'pointer', textAlign: 'center' }}>
             <div style={{ width: '50px', height: '50px', borderRadius: '50%', backgroundColor: autoSpin ? '#ffcc00' : '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #444' }}>
               🔄
             </div>
@@ -149,9 +163,9 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <div style={{ marginTop: '20px', textAlign: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: '5px 20px', borderRadius: '15px' }}>
           <h3 style={{ color: '#ffcc00', fontSize: '24px', margin: 0 }}>{spins} / {MAX_SPINS}</h3>
-          <p style={{ color: '#888', fontSize: '12px' }}>SPINS</p>
+          <p style={{ color: '#888', fontSize: '12px', margin: 0 }}>SPINS</p>
         </div>
       </div>
     </Page>
