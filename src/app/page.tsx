@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, Tappable, List, Info, Title } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, Tappable, List, Title } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -28,8 +28,15 @@ export default function Home() {
   const [isMuted, setIsMuted] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
+
+  // --- AUDIO HELPERS ---
+  const playSfx = (name: string) => {
+    if (isMuted) return;
+    const audio = new Audio(`/sounds/${name}`);
+    audio.play().catch(() => {});
+  };
 
   // --- DATA LOADING & SYNC ---
   useEffect(() => {
@@ -56,37 +63,18 @@ export default function Home() {
     }
   }, [points, spins, stage, fleetLevels, bossHp, isLoaded]);
 
-  // AUTO CLICKER LOGIC
+  // AUTO CLICKER
   useEffect(() => {
     let interval: any;
     if (autoSpin && spins >= multiplier && !spinning) {
-      interval = setInterval(() => {
-        spin();
-      }, 1500);
-    } else {
-      clearInterval(interval);
+      interval = setInterval(() => { spin(); }, 1500);
     }
     return () => clearInterval(interval);
   }, [autoSpin, spinning, spins, multiplier]);
 
-  // PASSIVE INCOME
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (isLoaded) {
-        const income = Math.floor(((fleetLevels.scout * 50 + fleetLevels.battle * 250 + fleetLevels.galleon * 1000) / 3600) * 5 * (1 + stage * 0.05)); 
-        if (income > 0) setPoints(p => p + income);
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [isLoaded, fleetLevels, stage]);
-
   const spin = () => {
-    if (spinning || spins < multiplier) {
-        setAutoSpin(false);
-        return;
-    }
-    if (audioRef.current && !isMuted) audioRef.current.play().catch(() => {});
-    
+    if (spinning || spins < multiplier) { setAutoSpin(false); return; }
+    playSfx('click.mp3');
     setSpinning(true);
     setSpins(p => p - multiplier);
     setEventMsg('');
@@ -99,88 +87,83 @@ export default function Home() {
       setReels(res);
       setSpinning(false);
       if (res[0] === res[1] && res[1] === res[2]) {
+        playSfx('win.mp3');
         const win = (res[0] === '🦉' ? 10000 : 2500) * multiplier * (1 + stage * 0.1);
         setPoints(p => p + Math.floor(win));
         setEventMsg(`🎉 BIG WIN! +${Math.floor(win).toLocaleString()}`);
-      } else {
-        setPoints(p => p + (5 * multiplier));
-      }
+      } else { setPoints(p => p + (5 * multiplier)); }
     }, 1000);
   };
 
-  // --- RENDERS ---
+  // --- VIEWS ---
 
   const renderHome = () => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-      {/* OWL & PRESTIGE */}
       <div style={{ margin: '10px 0', height: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-         <img src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: `drop-shadow(0 0 ${Math.min(stage, 25)}px gold)` }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/owl.png'; }} />
-         <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: '900', marginTop: '5px' }}>LVL {stage} | {stage >= 15 ? 'DIVINE' : 'UNBREAKABLE'}</div>
+         <img src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: `drop-shadow(0 0 ${Math.min(stage, 25)}px gold)` }} />
+         <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: '900', marginTop: '5px' }}>LVL {stage} | UNBREAKABLE</div>
       </div>
 
-      {/* ENERGY & CONTROLS */}
       <div style={{ width: '100%', padding: '0 20px', marginBottom: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold', marginBottom: '5px' }}><span>🧪 ENERGY POWER</span><span>{spins} / {MAX_SPINS}</span></div>
-        <div style={{ width: '100%', height: '10px', backgroundColor: '#111', borderRadius: '5px', overflow: 'hidden', border: '1px solid #333' }}><div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc', boxShadow: '0 0 10px #00ffcc' }} /></div>
-        
-        {/* AUTO & SOUND DASHBOARD */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', marginTop: '15px' }}>
-            <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)} style={{ minWidth: '100px' }}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
-            <Button size="s" mode="bezeled" onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈 MUTED' : '🔊 SOUND'}</Button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}><span>🧪 ENERGY POWER</span><span>{spins} / {MAX_SPINS}</span></div>
+        <div style={{ width: '100%', height: '10px', backgroundColor: '#111', borderRadius: '5px', overflow: 'hidden', border: '1px solid #333' }}><div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} /></div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
+            <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
+            <Button size="s" mode="bezeled" onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈' : '🔊'}</Button>
         </div>
       </div>
 
-      {/* SIDEBAR */}
-      <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '130px', flexDirection: 'column', zIndex: 10 }}>
-         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
+      <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '130px', flexDirection: 'column' }}>
+         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
          <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
-         <Tappable onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🚢</Tappable>
          <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
          <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
       </div>
 
-      {/* SLOT REELS */}
-      <div style={{ margin: '20px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '30px', border: '3px solid #ffcc00' }}>
-        {reels.map((s, i) => (<div key={i} style={{ fontSize: '40px', width: '75px', height: '100px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none', border: '1px solid #222' }}>{s}</div>))}
+      <div style={{ margin: '20px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '30px', border: '2px solid #ffcc00' }}>
+        {reels.map((s, i) => (<div key={i} style={{ fontSize: '40px', width: '75px', height: '100px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
       </div>
 
-      <button onClick={spin} disabled={spinning} style={{ width: '140px', height: '140px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 12px 0 #997a00', cursor: 'pointer' }}>SPIN</button>
+      <button onClick={spin} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 12px 0 #997a00' }}>SPIN</button>
+    </div>
+  );
+
+  const renderBoss = () => (
+    <div style={{ width: '100%', padding: '10px', textAlign: 'center', animation: 'fadeIn 0.5s' }}>
+      <Headline style={{ color: '#ff3333' }}>💀 BOSS: VORTIGERN</Headline>
+      <img src="/image/boss_vortigern.jpeg" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
+      <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px' }}><div style={{ width: `${(bossHp / 1000000) * 100}%`, height: '100%', backgroundColor: '#ff3333' }} /></div>
+      <Button size="l" mode="filled" style={{ width: '100%', backgroundColor: '#ff3333', marginTop: '20px' }} onClick={() => setBossHp(h => h - 10000)}>ATTACK BOSS</Button>
+      <Button onClick={() => setView('home')} mode="plain" style={{ marginTop: '10px', color: 'white' }}>BACK TO NEST</Button>
     </div>
   );
 
   const renderShop = () => (
-    <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
+    <div style={{ width: '100%', padding: '10px' }}>
       <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>🛒 PREMIUM SHOP</Headline>
-      <Section header="RESOURCES">
-          <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000) { setPoints(p => p - 5000); setSpins(s => Math.min(s + 50, MAX_SPINS)); } }}>BUY</Button>}>+50 ENERGY</Cell>
-          <Cell subtitle={`${stage * 10000} Credits`} after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p => p - stage * 10000); setStage(s => s + 1); } }}>UPGRADE</Button>}>EVOLVE OWL</Cell>
+      <Section header="INGAME">
+        <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => setPoints(p => p - 5000)}>BUY</Button>}>+50 ENERGY</Cell>
+        <Cell subtitle="10.000 Credits" after={<Button size="s" onClick={() => setStage(s => s + 1)}>UPGRADE</Button>}>EVOLVE OWL</Cell>
       </Section>
-      <Section header="REAL MONEY (STARS/TON)" footer="Withdraw your earnings to your TON wallet.">
-          <Cell before={<span>⭐</span>} subtitle="100 Telegram Stars" after={<Button size="s" mode="filled">100 ⭐</Button>}>+500 ENERGY</Cell>
-          <Cell before={<span>💎</span>} subtitle="Minimum 0.1 TON" after={<Button size="s" mode="outline" onClick={() => alert("Withdrawal system connecting...")}>CASH OUT</Button>}>EARN TON</Cell>
+      <Section header="REAL MONEY">
+        <Cell before={<span>⭐</span>} subtitle="100 Stars" after={<Button size="s" mode="filled">BUY</Button>}>+500 ENERGY</Cell>
+        <Cell before={<span>💎</span>} after={<Button size="s" mode="outline">CASH OUT</Button>}>EARN TON</Cell>
       </Section>
-      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '15px' }}>BACK TO NEST</Button>
+      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK</Button>
     </div>
   );
 
   const renderInfo = () => (
-    <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards', maxHeight: '85vh', overflowY: 'auto' }}>
-      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>ℹ️ GAME WIKI & INFO</Headline>
-      <Section header="OUR CORE VALUE">
-          <div style={{ padding: '15px', fontStyle: 'italic', textAlign: 'center', backgroundColor: 'rgba(255,204,0,0.1)', borderRadius: '15px', border: '1px solid #ffcc00' }}>"Respect as a foundation for Unity"</div>
-      </Section>
+    <div style={{ width: '100%', padding: '10px', overflowY: 'auto', maxHeight: '80vh' }}>
+      <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>ℹ️ GAME WIKI</Headline>
       <Section header="EVOLUTION LEVELS">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', padding: '5px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(i => (
-                  <div key={i} style={{ textAlign: 'center', backgroundColor: '#111', padding: '5px', borderRadius: '8px' }}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '5px' }} /><span style={{ fontSize: '8px', fontWeight: 'bold' }}>LVL {i}</span></div>
+                  <div key={i} style={{ textAlign: 'center' }}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '5px' }} /><span style={{ fontSize: '8px' }}>LVL {i}</span></div>
               ))}
           </div>
       </Section>
-      <Section header="RULES">
-          <Cell multiline subtitle="Spin to earn credits. Use credits to evolve your owl and build a fleet. Build a fleet for passive income.">The Basics</Cell>
-          <Cell multiline subtitle="Attack General Vortigern (Boss) or intercept Void Fleets for massive loot using your energy.">Warfare</Cell>
-      </Section>
-      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '15px' }}>BACK TO NEST</Button>
+      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK</Button>
     </div>
   );
 
@@ -188,36 +171,26 @@ export default function Home() {
     <Page>
       <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px', overflow: 'hidden' }}>
         
-        <audio ref={audioRef} src="/sounds/instrumental_beat.mp3" loop muted={isMuted} />
+        <audio ref={bgMusicRef} src="/sounds/Got 5 on it Symphonic Horror trap FM 152bpm.mp3" loop muted={isMuted} />
 
-        {/* TOP STATUS BAR */}
         <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '18px', borderBottom: '3px solid #ffcc00', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><span>💰</span><span style={{ fontWeight: '900', color: '#ffcc00', fontSize: '18px' }}>{points.toLocaleString()}</span></div>
+            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><span>💰</span><span style={{ fontWeight: '900', color: '#ffcc00' }}>{points.toLocaleString()}</span></div>
             <TonConnectButton />
         </div>
 
         {!gameStarted ? (
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
                 <Title style={{ color: '#ffcc00', marginBottom: '20px' }}>UNBREAKABLE OWL</Title>
-                <Button size="l" onClick={() => { setGameStarted(true); if(audioRef.current) audioRef.current.play(); }}>🚀 START GAME</Button>
+                <Button size="l" onClick={() => { setGameStarted(true); if(bgMusicRef.current) bgMusicRef.current.play(); }}>🚀 START GAME</Button>
             </div>
         ) : (
-            <>
-                {view === 'home' ? renderHome() : 
-                 view === 'shop' ? renderShop() : 
-                 view === 'info' ? renderInfo() : 
-                 <div style={{ width: '100%', textAlign: 'center', padding: '20px' }}>
-                    <Headline style={{ color: view === 'boss' ? '#ff3333' : '#ffcc00' }}>{view.toUpperCase()} COMING SOON</Headline>
-                    <Button onClick={() => setView('home')} style={{ marginTop: '20px' }}>BACK TO NEST</Button>
-                 </div>}
-            </>
+            <>{view === 'home' ? renderHome() : view === 'boss' ? renderBoss() : view === 'shop' ? renderShop() : renderInfo()}</>
         )}
 
         {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '12px 25px', borderRadius: '20px', fontWeight: 'bold', zIndex: 2000, boxShadow: '0 0 20px gold', textAlign: 'center' }}>{eventMsg}</div>
+          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: 'bold', zIndex: 2000 }}>{eventMsg}</div>
         )}
       </div>
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </Page>
   );
 }
