@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Button, Cell, Section, Headline, Tappable, List, Info } from '@telegram-apps/telegram-ui';
+import { useState, useEffect, useRef } from 'react';
+import { Button, Cell, Section, Headline, Tappable, List, Info, Modal } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
 const MAX_SPINS = 100;
+const MAX_LEVEL = 15;
 
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
@@ -14,29 +15,22 @@ export default function Home() {
   const [points, setPoints] = useState<number>(14135);
   const [spins, setSpins] = useState<number>(50);
   const [stage, setStage] = useState<number>(1);
-  const [view, setView] = useState<'home' | 'radar' | 'fleet' | 'boss'>('home');
+  const [view, setView] = useState<'home' | 'radar' | 'fleet' | 'boss' | 'shop' | 'info'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
   const [bossHp, setBossHp] = useState<number>(1000000);
   const [fleetLevels, setFleetLevels] = useState({ scout: 1, battle: 0, galleon: 0 });
   const [claimedQuests, setClaimedQuests] = useState<string[]>([]);
 
-  // --- UI STATE ---
+  // --- UI & FEATURES STATE ---
   const [spinning, setSpinning] = useState(false);
+  const [autoSpin, setAutoSpin] = useState(false); // <--- AUTO CLICKER
   const [multiplier, setMultiplier] = useState(1);
   const [reels, setReels] = useState(['🦉', '🎰', '💎']);
   const [eventMsg, setEventMsg] = useState('');
-  const [showShop, setShowShop] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
-
-  // Prestige Titels voor honderden levels
-  const getPrestigeTitle = (lvl: number) => {
-    if (lvl < 50) return "Young Owl";
-    if (lvl < 150) return "Elite Warrior";
-    if (lvl < 300) return "Cosmic Commander";
-    if (lvl < 500) return "Void Slayer";
-    return "God of Unity";
-  };
 
   // --- DATA LOADING & SYNC ---
   useEffect(() => {
@@ -46,14 +40,12 @@ export default function Home() {
     const fl = localStorage.getItem('owl_fleet');
     const bhp = localStorage.getItem('owl_boss_hp');
     const q = localStorage.getItem('owl_quests');
-    
     if (p) setPoints(Number(p));
     if (s) setSpins(Number(s));
     if (st) setStage(Number(st));
     if (fl) { try { setFleetLevels(JSON.parse(fl)); } catch(e) {} }
     if (bhp) setBossHp(Number(bhp));
     if (q) { try { setClaimedQuests(JSON.parse(q)); } catch(e) {} }
-    
     setIsLoaded(true);
   }, []);
 
@@ -68,6 +60,15 @@ export default function Home() {
     }
   }, [points, spins, stage, fleetLevels, bossHp, claimedQuests, isLoaded]);
 
+  // AUTO SPIN LOGIC
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (autoSpin && spins >= multiplier && !spinning) {
+      timer = setTimeout(() => spin(), 1500);
+    }
+    return () => clearTimeout(timer);
+  }, [autoSpin, spins, spinning]);
+
   // PASSIVE INCOME
   useEffect(() => {
     const interval = setInterval(() => {
@@ -80,7 +81,10 @@ export default function Home() {
   }, [isLoaded, fleetLevels, stage]);
 
   const spin = () => {
-    if (spinning || spins < multiplier) return;
+    if (spinning || spins < multiplier) {
+        setAutoSpin(false);
+        return;
+    }
     setSpinning(true);
     setSpins(p => p - multiplier);
     setEventMsg('');
@@ -102,124 +106,86 @@ export default function Home() {
     }, 1000);
   };
 
-  const attackBoss = () => {
-    const dmg = multiplier * 500 * stage;
-    if (spins >= multiplier) {
-      setSpins(s => s - multiplier);
-      setBossHp(h => Math.max(0, h - dmg));
-      setEventMsg(`💥 ATTACK! -${dmg.toLocaleString()} HP`);
-    }
-  };
+  // --- RENDERS ---
 
-  const claimQuest = (id: string, reward: number) => {
-    if (!claimedQuests.includes(id)) {
-      setPoints(p => p + reward);
-      setClaimedQuests(prev => [...prev, id]);
-      setEventMsg(`🎁 QUEST COMPLETE! +${reward.toLocaleString()} Credits`);
-    } else {
-      setEventMsg("❌ AL GECLAIMD!");
-    }
-  };
+  const renderHome = () => (
+    <>
+      <div style={{ margin: '15px 0', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+         <img src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: `drop-shadow(0 0 ${Math.min(stage, 25)}px gold)` }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/owl.png'; }} />
+         <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 10px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', marginTop: '5px' }}>LVL {stage} | {stage >= 15 ? 'GODLIKE' : 'UNBREAKABLE'}</div>
+      </div>
 
-  // --- RENDER SECTIONS ---
-  const renderRadar = () => (
+      <div style={{ width: '100%', padding: '0 30px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}><span>🧪 ENERGY</span><span>{spins} / {MAX_SPINS}</span></div>
+        <div style={{ width: '100%', height: '10px', backgroundColor: '#111', borderRadius: '5px', overflow: 'hidden', border: '1px solid #333' }}><div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} /></div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+        <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
+        <Button size="s" mode="bezeled" onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈' : '🔊'}</Button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '140px', flexDirection: 'column' }}>
+         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
+         <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
+         <Tappable onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🚢</Tappable>
+         <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
+         <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
+      </div>
+
+      <div style={{ margin: '30px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '20px', borderRadius: '30px', border: '2px solid #ffcc00' }}>
+        {reels.map((s, i) => (<div key={i} style={{ fontSize: '40px', width: '70px', height: '90px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
+      </div>
+
+      <button onClick={spin} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00' }}>SPIN</button>
+    </>
+  );
+
+  const renderShop = () => (
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
-      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '20px' }}>📡 RADAR QUEST HUB</Headline>
-      <Section header="DAILY MISSIONS">
-          <Cell 
-            before={<span>✅</span>} 
-            subtitle="+1.000 Credits" 
-            after={<Button size="s" disabled={claimedQuests.includes('daily')} onClick={() => claimQuest('daily', 1000)}>{claimedQuests.includes('daily') ? 'DONE' : 'CLAIM'}</Button>}
-          >Daily Check-in</Cell>
+      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>🛒 UNBREAKABLE SHOP</Headline>
+      <Section header="CREDIT PURCHASES">
+          <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000) { setPoints(p => p - 5000); setSpins(s => Math.min(s + 50, MAX_SPINS)); } }}>BUY</Button>}>+50 ENERGY</Cell>
+          <Cell subtitle={`${stage * 10000} Credits`} after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p => p - stage * 10000); setStage(s => s + 1); } }}>UPGRADE</Button>}>EVOLVE OWL</Cell>
       </Section>
-      <Section header="UNITY MISSIONS" footer="Respect as a foundation for Unity.">
-          <Cell 
-            before={<span>🤝</span>} 
-            subtitle="+10.000 Credits" 
-            after={<Button size="s" disabled={claimedQuests.includes('unity')} onClick={() => claimQuest('unity', 10000)}>COMPLETE</Button>}
-          >Unity Quest</Cell>
+      <Section header="REAL MONEY (STARS/TON)">
+          <Cell before={<span>⭐</span>} subtitle="Buy with Telegram Stars" after={<Button size="s" mode="filled">100 ⭐</Button>}>+500 ENERGY</Cell>
+          <Cell before={<span>💎</span>} subtitle="Withdraw your earnings" after={<Button size="s" mode="outline" onClick={() => alert("Withdrawal to " + tonConnectUI.account?.address)}>CASH OUT</Button>}>EARN TON</Cell>
       </Section>
-      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK TO NEST</Button>
+      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '15px' }}>BACK TO NEST</Button>
     </div>
   );
 
-  const renderFleet = () => (
-    <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
-      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>🚢 FLEET HUB</Headline>
-      <Section header="FLEET STATUS">
-          <Cell before={<span>🛶</span>} subtitle={`LVL ${fleetLevels.scout}`} after={<Button size="s" onClick={() => { if(points >= 10000) { setPoints(p => p - 10000); setFleetLevels(f => ({...f, scout: f.scout + 1})); } }}>UPGRADE</Button>}>Scout Nest</Cell>
-          <Cell before={<span>🚢</span>} subtitle={`LVL ${fleetLevels.battle}`} after={<Button size="s" onClick={() => { if(points >= 50000) { setPoints(p => p - 50000); setFleetLevels(f => ({...f, battle: f.battle + 1})); } }}>UPGRADE</Button>}>Battle Wing</Cell>
-          <Cell before={<span>🏯</span>} subtitle={`LVL ${fleetLevels.galleon}`} after={<Button size="s" onClick={() => { if(points >= 250000) { setPoints(p => p - 250000); setFleetLevels(f => ({...f, galleon: f.galleon + 1})); } }}>UPGRADE</Button>}>Unity Galleon</Cell>
+  const renderInfo = () => (
+    <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards', maxHeight: '80vh', overflowY: 'auto' }}>
+      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>ℹ️ OWL WIKI & RULES</Headline>
+      <Section header="THE CORE VALUE">
+          <div style={{ padding: '15px', fontStyle: 'italic', textAlign: 'center', backgroundColor: 'rgba(255,204,0,0.1)', borderRadius: '10px' }}>
+            "Respect as a foundation for Unity"
+          </div>
+      </Section>
+      <Section header="EVOLUTION TIERS">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', padding: '10px' }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(i => (
+                  <div key={i} style={{ textAlign: 'center' }}>
+                      <img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '5px' }} />
+                      <span style={{ fontSize: '10px' }}>LVL {i}</span>
+                  </div>
+              ))}
+          </div>
+      </Section>
+      <Section header="HOW TO PLAY">
+          <Cell multiline subtitle="Spin the slot machine to earn credits and energy. Use credits to evolve your owl and build a fleet for passive income.">Basics</Cell>
+          <Cell multiline subtitle="Use your energy to attack General Vortigern (the Boss) or intercept his fleet to steal massive rewards.">Warfare</Cell>
       </Section>
       <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '15px' }}>BACK TO NEST</Button>
     </div>
   );
 
   const renderBoss = () => (
-    <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards', textAlign: 'center' }}>
-      <Headline style={{ color: '#ff3333', marginBottom: '10px' }}>💀 BOSS RAID</Headline>
-      <div style={{ position: 'relative', height: '200px', marginBottom: '20px', border: '2px solid #ff3333', borderRadius: '15px', overflow: 'hidden' }}>
-        <img src="/image/boss_vortigern.jpeg" alt="Boss" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/crow.png'; }} />
-        <div style={{ position: 'absolute', bottom: 0, width: '100%', padding: '10px', background: 'linear-gradient(transparent, black)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontWeight: 'bold' }}><span>VOID HP</span><span>{bossHp.toLocaleString()}</span></div>
-          <div style={{ width: '100%', height: '8px', backgroundColor: '#333', borderRadius: '4px', marginTop: '5px' }}>
-            <div style={{ width: `${(bossHp / 1000000) * 100}%`, height: '100%', backgroundColor: '#ff3333' }} />
-          </div>
-        </div>
-      </div>
-      <Button size="l" mode="filled" style={{ width: '100%', backgroundColor: '#ff3333' }} onClick={attackBoss}>ATTACK BOSS</Button>
-      <Button onClick={() => setView('home')} mode="plain" style={{ marginTop: '10px', color: 'white' }}>BACK TO NEST</Button>
-    </div>
-  );
-
-  return (
-    <Page>
-      <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px', overflow: 'hidden' }}>
-        
-        <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '18px', borderBottom: '3px solid #ffcc00', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><span>💰</span><span style={{ fontWeight: '900', color: '#ffcc00' }}>{points.toLocaleString()}</span></div>
-            <TonConnectButton />
-        </div>
-
-        {view === 'home' ? (
-          <>
-            <div style={{ margin: '15px 0', height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-               <img src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: `drop-shadow(0 0 ${Math.min(stage, 25)}px gold)` }} onError={(e) => { (e.target as any).src = 'https://img.icons8.com/color/144/owl.png'; }} />
-               <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 10px', borderRadius: '10px', fontSize: '10px', fontWeight: 'bold', marginTop: '5px' }}>
-                 LVL {stage} | {getPrestigeTitle(stage)}
-               </div>
-            </div>
-            <div style={{ width: '100%', padding: '0 30px', marginBottom: '15px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}><span>🧪 ENERGY</span><span>{spins} / {MAX_SPINS}</span></div>
-              <div style={{ width: '100%', height: '10px', backgroundColor: '#111', borderRadius: '5px', overflow: 'hidden', border: '1px solid #333' }}><div style={{ width: `${(spins / MAX_SPINS) * 100}%`, height: '100%', backgroundColor: '#00ffcc' }} /></div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '140px', flexDirection: 'column' }}>
-               <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
-               <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
-               <Tappable onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🚢</Tappable>
-               <Tappable onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
-            </div>
-            <div style={{ margin: '40px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
-              {reels.map((s, i) => (<div key={i} style={{ fontSize: '45px', width: '80px', height: '105px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
-            </div>
-            <button onClick={spin} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00' }}>SPIN</button>
-          </>
-        ) : view === 'radar' ? renderRadar() : view === 'fleet' ? renderFleet() : renderBoss()}
-
-        {showShop && (
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 1000, padding: '20px' }}>
-            <Button onClick={() => setShowShop(false)} mode="bezeled" style={{ marginBottom: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>CLOSE</Button>
-            <Section header="🆙 EVOLUTION">
-               <Cell subtitle={`${stage * 10000} Credits`} after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p => p - stage * 10000); setStage(s => s + 1); } }}>UPGRADE</Button>}>LEVEL {stage + 1}</Cell>
-            </Section>
-          </div>
-        )}
-
-        {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '12px 25px', borderRadius: '20px', fontWeight: 'bold', zIndex: 2000 }}>{eventMsg}</div>
-        )}
-      </div>
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-    </Page>
-  );
-}
+    <div style={{ width: '100%', padding: '10px', textAlign: 'center' }}>
+      <Headline style={{ color: '#ff3333' }}>💀 BOSS RAID</Headline>
+      <img src="/image/boss_vortigern.jpeg" alt="Boss" style={{ width: '100%', borderRadius: '15px', margin: '15px 0' }} />
+      <div style={{ marginBottom: '15px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}><span>VOID HP</span><span>{bossHp.toLocaleString()}</span></div>
+        <div style={{ width: '100%', height: '8px', backgroundColor: '#333', borderRadius: '4px'
