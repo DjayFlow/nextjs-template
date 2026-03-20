@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, List, Cell, Modal, AppRoot } from '@telegram-apps/telegram-ui';
-import { TonConnectButton } from '@tonconnect/ui-react';
+import { Button, List, Cell, Section } from '@telegram-apps/telegram-ui';
+import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
+const MAX_SPINS = 50;
 const XP_PER_LEVEL = 10000;
 
 export default function Home() {
+  const [tonConnectUI] = useTonConnectUI();
+  
   // --- PERSISTENT DATA ---
   const [points, setPoints] = useState<number>(13344);
   const [spins, setSpins] = useState<number>(50);
@@ -15,7 +18,6 @@ export default function Home() {
   const [level, setLevel] = useState<number>(1);
   const [xp, setXp] = useState<number>(0);
   const [shields, setShields] = useState<number>(0);
-  const [lastGiftDate, setLastGiftDate] = useState<string>("");
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- UI STATE ---
@@ -29,26 +31,24 @@ export default function Home() {
 
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
-  const energyPacks = [50, 100, 130, 150, 175, 200, 250, 375, 500, 750, 1000];
+
+  // Energie Pakketten Config
+  const energyShop = [
+    { amount: 50, price: 5000, currency: 'credits' },
+    { amount: 100, price: 0.5, currency: 'TON' },
+    { amount: 250, price: 1.2, currency: 'TON' },
+    { amount: 500, price: 2.0, currency: 'TON' },
+    { amount: 1000, price: 3.5, currency: 'TON' },
+  ];
 
   // 1. Laden uit geheugen
   useEffect(() => {
-    const saved = {
-      p: localStorage.getItem('owl_p'),
-      s: localStorage.getItem('owl_s'),
-      ms: localStorage.getItem('owl_ms'),
-      l: localStorage.getItem('owl_l'),
-      x: localStorage.getItem('owl_x'),
-      sh: localStorage.getItem('owl_sh'),
-      gd: localStorage.getItem('owl_gd')
-    };
-    if (saved.p) setPoints(Number(saved.p));
-    if (saved.s) setSpins(Number(saved.s));
-    if (saved.ms) setMaxSpins(Number(saved.ms));
-    if (saved.l) setLevel(Number(saved.l));
-    if (saved.x) setXp(Number(saved.x));
-    if (saved.sh) setShields(Number(saved.sh));
-    if (saved.gd) setLastGiftDate(saved.gd);
+    const p = localStorage.getItem('owl_p');
+    const s = localStorage.getItem('owl_s');
+    const l = localStorage.getItem('owl_l');
+    if (p) setPoints(Number(p));
+    if (s) setSpins(Number(s));
+    if (l) setLevel(Number(l));
     setIsLoaded(true);
   }, []);
 
@@ -57,21 +57,18 @@ export default function Home() {
     if (isLoaded) {
       localStorage.setItem('owl_p', points.toString());
       localStorage.setItem('owl_s', spins.toString());
-      localStorage.setItem('owl_ms', maxSpins.toString());
       localStorage.setItem('owl_l', level.toString());
-      localStorage.setItem('owl_x', xp.toString());
-      localStorage.setItem('owl_sh', shields.toString());
-      localStorage.setItem('owl_gd', lastGiftDate);
     }
-  }, [points, spins, maxSpins, level, xp, shields, lastGiftDate, isLoaded]);
+  }, [points, spins, level, isLoaded]);
 
-  // 3. AUTO-SPIN LOGIC (FIXED)
+  // 3. AUTO-SPIN LOOP
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (autoSpin && !spinning && spins >= multiplier) {
-      timer = setTimeout(() => spin(), 1200);
+      timer = setTimeout(() => spin(), 1000);
     } else if (autoSpin && spins < multiplier) {
       setAutoSpin(false);
+      setEventMsg("🔋 ENERGY DEPLETED!");
     }
     return () => clearTimeout(timer);
   }, [autoSpin, spinning, spins, multiplier]);
@@ -83,24 +80,22 @@ export default function Home() {
     audio.play().catch(() => {});
   };
 
-  const toggleMusic = () => {
+  const startMusic = () => {
     if (!bgMusicRef.current) {
       bgMusicRef.current = new Audio('/sounds/Got 5 on it Symphonic Horror trap FM 152bpm.mp3');
       bgMusicRef.current.loop = true;
       bgMusicRef.current.volume = 0.2;
     }
-    if (isMuted) {
+    if (bgMusicRef.current.paused && !isMuted) {
       bgMusicRef.current.play().catch(() => {});
-      setIsMuted(false);
-    } else {
-      bgMusicRef.current.pause();
-      setIsMuted(true);
     }
   };
 
   const spin = () => {
     if (spinning || spins < multiplier) return;
-    if (!isMuted && (!bgMusicRef.current || bgMusicRef.current.paused)) toggleMusic();
+    
+    // Start muziek bij de eerste spin
+    startMusic();
 
     playSound('spin');
     setSpinning(true);
@@ -119,156 +114,136 @@ export default function Home() {
       
       if (res[0] === res[1] && res[1] === res[2]) handleWin(res[0]);
       else {
-        const baseWin = 5 * multiplier * (1 + level * 0.1);
-        setPoints(p => p + baseWin);
+        setPoints(p => p + (5 * multiplier));
         playSound('points');
       }
     }, 1000);
   };
 
   const handleWin = (symbol: string) => {
-    let winAmt = 500;
-    if (symbol === '🦉') winAmt = 10000;
-    else if (symbol === '🎰') winAmt = 5000;
-    
-    const finalWin = winAmt * multiplier * (1 + level * 0.2);
+    const winAmt = symbol === '🦉' ? 10000 : 2500;
+    const finalWin = winAmt * multiplier;
     setPoints(p => p + finalWin);
-    setEventMsg(`🎉 BIG WIN! +${finalWin.toLocaleString()}`);
+    setEventMsg(`🎉 WIN! +${finalWin.toLocaleString()}`);
     playSound(symbol === '🦉' ? 'victory' : 'win');
     setTimeout(() => playSound('coins'), 500);
   };
 
-  const claimDaily = () => {
-    const today = new Date().toDateString();
-    if (lastGiftDate === today) {
-      setEventMsg("⏳ GIFT AL GECLAIMD! KOM MORGEN TERUG");
-      playSound('click');
-      return;
+  const handlePurchase = async (pack: any) => {
+    if (pack.currency === 'credits') {
+      if (points < pack.price) {
+        setEventMsg("❌ NOT ENOUGH CREDITS!");
+        return;
+      }
+      setPoints(p => p - pack.price);
+      setSpins(s => s + pack.amount);
+      setEventMsg(`🔋 +${pack.amount} ENERGY ADDED!`);
+      playSound('payout');
+    } else {
+      // --- REAL MONEY / TON TRANSACTION ---
+      setEventMsg("🔗 CONNECTING WALLET...");
+      // Hier roepen we de TonConnect UI aan voor een echte betaling
+      try {
+        // Dit opent de wallet voor de gebruiker
+        await tonConnectUI.connectWallet();
+        setEventMsg("💰 TRANSACTION PENDING...");
+        // In een echte app stuur je hier de transactie naar de blockchain
+      } catch (e) {
+        setEventMsg("❌ TRANSACTION CANCELLED");
+      }
     }
-    setSpins(s => Math.min(s + 50, maxSpins));
-    setLastGiftDate(today);
-    setEventMsg("🎁 DAILY 50 SPINS GRANTED!");
-    playSound('reward');
-  };
-
-  const buyEnergy = (amount: number) => {
-    const cost = amount * 10;
-    if (points < cost) {
-      setEventMsg("❌ NIET GENOEG CREDITS!");
-      playSound('click');
-      return;
-    }
-    setPoints(p => p - cost);
-    setSpins(s => s + amount);
-    setMaxSpins(ms => Math.max(ms, spins + amount));
-    setEventMsg(`🔋 +${amount} ENERGY GEKOCHT!`);
-    playSound('payout');
-  };
-
-  const upgradeOwl = () => {
-    const cost = level * 5000;
-    if (points < cost) {
-       setEventMsg(`❌ UPGRADE KOST ${cost.toLocaleString()}`);
-       return;
-    }
-    setPoints(p => p - cost);
-    setLevel(l => l + 1);
-    setEventMsg(`🦉 OWL UPGRADED NAAR LVL ${level + 1}!`);
-    playSound('level');
   };
 
   return (
     <Page>
-      <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px', overflow: 'hidden' }}>
+      <div style={{ backgroundImage: 'url(/sounds/high_quality_bg.png)', backgroundSize: 'cover', minHeight: '100vh', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px' }}>
         
-        {/* TOP HEADER */}
-        <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '18px', borderBottom: '3px solid #ffcc00', marginBottom: '10px' }}>
+        {/* BOINKERS HEADER */}
+        <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '20px', borderBottom: '3px solid #ffcc00', marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
               <span style={{ fontSize: '20px' }}>💰</span>
-              <span style={{ fontWeight: '900', color: '#ffcc00' }}>{points.toLocaleString()}</span>
-            </div>
-            <div style={{ display: 'flex', gap: '5px' }}>
-              {[...Array(3)].map((_, i) => <span key={i} style={{ opacity: i < shields ? 1 : 0.2 }}>🛡️</span>)}
+              <span style={{ fontWeight: '900', color: '#ffcc00', fontSize: '18px' }}>{points.toLocaleString()}</span>
             </div>
             <TonConnectButton />
-          </div>
-          <div style={{ width: '100%', height: '4px', backgroundColor: '#222', borderRadius: '2px', marginTop: '8px' }}>
-            <div style={{ width: `${(xp / XP_PER_LEVEL) * 100}%`, height: '100%', backgroundColor: '#a020f0' }} />
           </div>
         </div>
 
         {/* SIDE BUTTONS */}
-        <div style={{ position: 'absolute', left: '10px', top: '120px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-           <div style={{ textAlign: 'center' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🛰️</div><span style={{ fontSize: '8px' }}>RADAR</span></div>
-           <div style={{ textAlign: 'center' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🚢</div><span style={{ fontSize: '8px' }}>FLEET</span></div>
-        </div>
-        <div style={{ position: 'absolute', right: '10px', top: '120px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-           <div onClick={() => setShowShop(true)} style={{ textAlign: 'center', cursor: 'pointer' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🛒</div><span style={{ fontSize: '8px' }}>SHOP</span></div>
-           <div onClick={toggleMusic} style={{ textAlign: 'center', cursor: 'pointer' }}><div style={{ width: '40px', height: '40px', backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ffcc00' }}>🎵</div><span style={{ fontSize: '8px' }}>MUSIC</span></div>
+        <div style={{ position: 'absolute', right: '10px', top: '100px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 10 }}>
+           <div onClick={() => setShowShop(true)} style={{ textAlign: 'center', cursor: 'pointer' }}>
+             <div style={{ width: '45px', height: '45px', backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #ffcc00', fontSize: '20px' }}>🛒</div>
+             <span style={{ fontSize: '8px', fontWeight: 'bold' }}>SHOP</span>
+           </div>
+           <div onClick={() => { setIsMuted(!isMuted); if(bgMusicRef.current) isMuted ? bgMusicRef.current.play() : bgMusicRef.current.pause(); }} style={{ textAlign: 'center', cursor: 'pointer' }}>
+             <div style={{ width: '45px', height: '45px', backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #ffcc00', fontSize: '20px' }}>{isMuted ? '🔇' : '🎵'}</div>
+             <span style={{ fontSize: '8px', fontWeight: 'bold' }}>MUSIC</span>
+           </div>
         </div>
 
-        {/* ENERGY POWER BAR */}
+        {/* ENERGY BAR */}
         <div style={{ width: '100%', padding: '0 40px', marginTop: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#ffcc00', fontWeight: 'bold', marginBottom: '4px' }}>
             <span>🧪 ENERGY POWER</span>
             <span>{spins} / {maxSpins}</span>
           </div>
-          <div style={{ width: '100%', height: '12px', backgroundColor: '#111', borderRadius: '6px', overflow: 'hidden', border: '1px solid #333' }}>
+          <div style={{ width: '100%', height: '14px', backgroundColor: '#111', borderRadius: '7px', overflow: 'hidden', border: '1px solid #333' }}>
             <div style={{ width: `${(spins / maxSpins) * 100}%`, height: '100%', backgroundColor: '#00ffcc', boxShadow: '0 0 15px #00ffcc' }} />
           </div>
         </div>
 
-        {/* SLOT MACHINE */}
-        <div style={{ margin: '30px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '20px', borderRadius: '35px', border: '3px solid #ffcc00' }}>
+        {/* SLOTS AREA */}
+        <div style={{ margin: '40px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
           {reels.map((s, i) => (
-            <div key={i} style={{ fontSize: '45px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(6px)' : 'none' }}>{s}</div>
+            <div key={i} style={{ fontSize: '50px', width: '85px', height: '110px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>
           ))}
         </div>
 
         {/* MULTIPLIERS */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           {[1, 2, 3, 5, 10].map(m => (
-            <button key={m} onClick={() => { setMultiplier(m); playSound('click'); }} style={{ width: '42px', height: '42px', borderRadius: '10px', border: 'none', backgroundColor: multiplier === m ? '#ffcc00' : '#1a1a1a', color: multiplier === m ? 'black' : 'white', fontWeight: '900' }}>x{m}</button>
+            <button key={m} onClick={() => { setMultiplier(m); playSound('click'); }} style={{ width: '45px', height: '45px', borderRadius: '12px', border: 'none', backgroundColor: multiplier === m ? '#ffcc00' : '#1a1a1a', color: multiplier === m ? 'black' : 'white', fontWeight: '900' }}>x{m}</button>
           ))}
         </div>
 
         {/* CONTROLS */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
-          <div onClick={() => { setAutoSpin(!autoSpin); playSound('powerup'); }} style={{ textAlign: 'center', cursor: 'pointer' }}>
-            <div style={{ width: '55px', height: '55px', borderRadius: '50%', backgroundColor: autoSpin ? '#ffcc00' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444' }}>🔄</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+          <div onClick={() => { setAutoSpin(!autoSpin); playSound('powerup'); startMusic(); }} style={{ textAlign: 'center', cursor: 'pointer' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: autoSpin ? '#ffcc00' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444', fontSize: '24px' }}>🔄</div>
             <span style={{ fontSize: '10px', color: autoSpin ? '#ffcc00' : '#888', fontWeight: 'bold' }}>AUTO</span>
           </div>
-          <button onClick={spin} disabled={spinning} style={{ width: '150px', height: '150px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '32px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 12px 0 #997a00' }}>SPIN</button>
-          <div onClick={claimDaily} style={{ textAlign: 'center', cursor: 'pointer' }}>
-             <div style={{ width: '55px', height: '55px', borderRadius: '50%', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444' }}>🎁</div>
-             <span style={{ fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>GIFT</span>
-          </div>
-        </div>
 
-        <div onClick={upgradeOwl} style={{ marginTop: '20px', cursor: 'pointer', textAlign: 'center', backgroundColor: 'rgba(255,204,0,0.2)', padding: '10px 20px', borderRadius: '15px', border: '1px solid #ffcc00' }}>
-           <p style={{ margin: 0, fontWeight: 'bold', fontSize: '14px' }}>OWL LEVEL: {level} 🆙</p>
-           <p style={{ margin: 0, fontSize: '10px', opacity: 0.7 }}>UPGRADE VOOR {(level * 5000).toLocaleString()}</p>
+          <button onClick={spin} disabled={spinning} style={{ width: '160px', height: '160px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '36px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 15px 0 #997a00' }}>SPIN</button>
+
+          <div onClick={() => { setSpins(s => Math.min(s + 5, MAX_SPINS)); setEventMsg("🎁 +5 BONUS!"); playSound('reward'); }} style={{ textAlign: 'center', cursor: 'pointer' }}>
+             <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #444', fontSize: '24px' }}>🎁</div>
+             <span style={{ fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>BONUS</span>
+          </div>
         </div>
 
         {/* SHOP MODAL */}
         {showShop && (
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 1000, padding: '20px', display: 'flex', flexDirection: 'column' }}>
-            <Button onClick={() => setShowShop(false)} style={{ marginBottom: '20px' }}>TERUG</Button>
-            <h1 style={{ color: '#ffcc00', textAlign: 'center' }}>🔋 ENERGY SHOP</h1>
-            <List>
-              {energyPacks.map(amt => (
-                <Cell key={amt} onClick={() => buyEnergy(amt)} subtitle={`KOST ${(amt * 10).toLocaleString()} CREDITS`} after={<Button size="s">KOOP</Button>}>
-                  +{amt} ENERGY
+            <Button onClick={() => setShowShop(false)} mode="beveled" style={{ marginBottom: '20px', backgroundColor: '#ffcc00', color: 'black' }}>BACK TO NEST</Button>
+            <h1 style={{ color: '#ffcc00', textAlign: 'center', fontSize: '28px', marginBottom: '20px' }}>🔋 ENERGY SHOP</h1>
+            <Section header="FREE & CREDITS">
+               <Cell onClick={() => handlePurchase(energyShop[0])} subtitle="5.000 Credits" after={<Button size="s">BUY</Button>}>50 ENERGY</Cell>
+            </Section>
+            <Section header="REAL MONEY (WALLET)">
+              {energyShop.slice(1).map((pack, i) => (
+                <Cell key={i} onClick={() => handlePurchase(pack)} subtitle={`${pack.price} TON`} after={<Button size="s" mode="filled" style={{backgroundColor: '#0088cc'}}>PAY</Button>}>
+                  {pack.amount} ENERGY
                 </Cell>
               ))}
-            </List>
+            </Section>
+            <p style={{ fontSize: '10px', textAlign: 'center', marginTop: '20px', opacity: 0.6 }}>Transactions via TON Blockchain</p>
           </div>
         )}
 
         {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: '900', fontSize: '18px', zIndex: 2000 }}>{eventMsg}</div>
+          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '15px 30px', borderRadius: '25px', fontWeight: '900', fontSize: '20px', zIndex: 2000, boxShadow: '0 0 50px gold' }}>{eventMsg}</div>
         )}
+
       </div>
     </Page>
   );
