@@ -17,7 +17,7 @@ export default function Home() {
   const [view, setView] = useState<'home' | 'radar' | 'fleet' | 'boss'>('home');
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- BOSS STATE (General Vortigern) ---
+  // --- BOSS STATE (Vortigern) ---
   const [bossHp, setBossHp] = useState<number>(1000000);
   const maxBossHp = 1000000;
 
@@ -60,13 +60,13 @@ export default function Home() {
     }
   }, [points, spins, stage, fleetLevels, bossHp, isLoaded]);
 
-  // PASSIVE INCOME
+  // --- PASSIVE INCOME ---
   useEffect(() => {
     const interval = setInterval(() => {
       if (isLoaded) {
         const base = (fleetLevels.scout * 50) + (fleetLevels.battle * 250) + (fleetLevels.galleon * 1000);
         const income = Math.floor((base / 3600) * 5 * (1 + stage * 0.05)); 
-        setPoints(p => p + income);
+        if (income > 0) setPoints(p => p + income);
       }
     }, 5000);
     return () => clearInterval(interval);
@@ -127,9 +127,12 @@ export default function Home() {
       } else {
         setEventMsg(`❌ INTERCEPTION FAILED!`);
       }
+    } else {
+      setEventMsg("❌ NO ENERGY!");
     }
   };
 
+  // --- RENDER SCREENS ---
   const renderBoss = () => (
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards', textAlign: 'center' }}>
       <Headline style={{ color: '#ff3333', marginBottom: '10px' }}>💀 BOSS RAID</Headline>
@@ -142,7 +145,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <Button size="l" mode="filled" style={{ width: '100%', backgroundColor: '#ff3333' }} onClick={attackBoss}>ATTACK (-{multiplier} ENERGY)</Button>
+      <Button size="l" mode="filled" style={{ width: '100%', backgroundColor: '#ff3333' }} onClick={attackBoss}>ATTACK BOSS</Button>
       <Button onClick={() => setView('home')} mode="plain" style={{ marginTop: '10px', color: 'white' }}>BACK TO NEST</Button>
     </div>
   );
@@ -151,10 +154,18 @@ export default function Home() {
     <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
       <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>🚢 FLEET HUB</Headline>
       <Section header="SHIPS">
-          <Cell before={<span>🛶</span>} subtitle={`LVL ${fleetLevels.scout}`} after={<Button size="s" onClick={() => { if(points >= 10000) { setPoints(p => p - 10000); setFleetLevels(f => ({...f, scout: f.scout + 1})); } }}>UPGRADE</Cell>
-          <Cell before={<span>🚢</span>} subtitle={`LVL ${fleetLevels.battle}`} after={<Button size="s" onClick={() => { if(points >= 50000) { setPoints(p => p - 50000); setFleetLevels(f => ({...f, battle: f.battle + 1})); } }}>UPGRADE</Cell>
+          <Cell 
+            before={<span>🛶</span>} 
+            subtitle={`LVL ${fleetLevels.scout}`} 
+            after={<Button size="s" onClick={() => { if(points >= 10000) { setPoints(p => p - 10000); setFleetLevels(f => ({...f, scout: f.scout + 1})); } }}>UPGRADE</Button>}
+          >Scout Nest</Cell>
+          <Cell 
+            before={<span>🚢</span>} 
+            subtitle={`LVL ${fleetLevels.battle}`} 
+            after={<Button size="s" onClick={() => { if(points >= 50000) { setPoints(p => p - 50000); setFleetLevels(f => ({...f, battle: f.battle + 1})); } }}>UPGRADE</Button>}
+          >Battle Wing</Cell>
       </Section>
-      <Section header="WARFARE" footer="Use spins to steal technology and deal Boss damage.">
+      <Section header="WARFARE" footer="Use spins to steal technology and deal damage.">
           <Tappable onClick={interceptVoidFleet} style={{ backgroundColor: '#ff3333', padding: '15px', borderRadius: '12px', textAlign: 'center', color: 'white', fontWeight: 'bold' }}>
             🚢 INTERCEPT VOID FLEET
           </Tappable>
@@ -185,39 +196,4 @@ export default function Home() {
             </div>
 
             <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '140px', flexDirection: 'column' }}>
-               <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
-               <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
-               <Tappable onClick={() => setView('fleet')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🚢</Tappable>
-               <Tappable onClick={() => setShowShop(true)} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
-            </div>
-
-            <div style={{ margin: '40px 0', display: 'flex', gap: '10px', backgroundColor: 'rgba(0,0,0,0.5)', padding: '25px', borderRadius: '40px', border: '3px solid #ffcc00' }}>
-              {reels.map((s, i) => (<div key={i} style={{ fontSize: '45px', width: '80px', height: '105px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '15px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
-            </div>
-
-            <button onClick={spin} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00' }}>SPIN</button>
-          </>
-        ) : view === 'boss' ? renderBoss() : view === 'fleet' ? renderFleet() : (
-          <div style={{ width: '100%', padding: '10px', textAlign: 'center' }}>
-            <Headline style={{ color: '#ffcc00' }}>📡 RADAR QUEST</Headline>
-            <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>BACK TO NEST</Button>
-          </div>
-        )}
-
-        {showShop && (
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.98)', zIndex: 1000, padding: '20px' }}>
-            <Button onClick={() => setShowShop(false)} mode="bezeled" style={{ marginBottom: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>CLOSE SHOP</Button>
-            <Section header="🆙 EVOLUTION">
-               <Cell subtitle={`${stage * 10000} Credits`} after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p => p - stage * 10000); setStage(s => s + 1); } }}>UPGRADE</Button>}>LVL {stage + 1}</Cell>
-            </Section>
-          </div>
-        )}
-
-        {eventMsg && (
-          <div style={{ position: 'absolute', top: '50%', backgroundColor: '#ffcc00', color: 'black', padding: '12px 25px', borderRadius: '20px', fontWeight: 'bold', zIndex: 2000, boxShadow: '0 0 20px gold' }}>{eventMsg}</div>
-        )}
-      </div>
-      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-    </Page>
-  );
-}
+               <Tapp
