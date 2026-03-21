@@ -10,17 +10,18 @@ const BASE_ENERGY = 50;
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   
-  // --- PERSISTENT STATE ---
+  // --- PERSISTENT STATE (Alles wat opgeslagen moet worden) ---
   const [points, setPoints] = useState<number>(0);
   const [spins, setSpins] = useState<number>(0); 
   const [stage, setStage] = useState<number>(1);
   const [view, setView] = useState<'home' | 'radar' | 'fleet' | 'boss' | 'shop' | 'info' | 'friends'>('home');
   const [lastGift, setLastGift] = useState<number>(0);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [bossHp, setBossHp] = useState<number>(1000000); // <--- HIER ZAT DE ERROR, NU GEFIXED!
   const [multiplier, setMultiplier] = useState<number>(1); 
   const [claimedQuests, setClaimedQuests] = useState<string[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- UI STATE ---
+  // --- UI STATE (Voor de looks) ---
   const [spinning, setSpinning] = useState(false);
   const [autoSpin, setAutoSpin] = useState(false);
   const [reels, setReels] = useState(['🦉', '🎰', '💎']);
@@ -35,18 +36,20 @@ export default function Home() {
     if (!isMuted) { new Audio(`/sounds/${file}`).play().catch(() => {}); }
   };
 
-  // --- DATA SYNC ---
+  // --- DATA SYNC (Laden en Opslaan) ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
     const st = localStorage.getItem('owl_stage');
     const lg = localStorage.getItem('owl_last_gift');
+    const bhp = localStorage.getItem('owl_boss_hp');
     const cq = localStorage.getItem('owl_claimed_quests');
     const welcome = localStorage.getItem('owl_welcome_claimed');
 
     if (p) setPoints(Math.max(0, Number(p))); 
     if (st) setStage(Number(st));
     if (lg) setLastGift(Number(lg));
+    if (bhp) setBossHp(Number(bhp));
     if (cq) { try { setClaimedQuests(JSON.parse(cq)); } catch(e) { setClaimedQuests([]); } }
 
     if (!welcome) {
@@ -63,11 +66,12 @@ export default function Home() {
       localStorage.setItem('owl_spins', spins.toString());
       localStorage.setItem('owl_stage', stage.toString());
       localStorage.setItem('owl_last_gift', lastGift.toString());
+      localStorage.setItem('owl_boss_hp', bossHp.toString());
       localStorage.setItem('owl_claimed_quests', JSON.stringify(claimedQuests));
     }
-  }, [points, spins, stage, lastGift, claimedQuests, isLoaded]);
+  }, [points, spins, stage, lastGift, bossHp, claimedQuests, isLoaded]);
 
-  // AUTO SPIN
+  // AUTO SPIN LOGIC
   useEffect(() => {
     let timer: any;
     if (autoSpin && spins >= multiplier && !spinning && gameStarted) {
@@ -96,24 +100,22 @@ export default function Home() {
         playSfx('win.mp3');
         const win = (res[0] === '🦉' ? 10000 : 2500) * multiplier * (1 + stage * 0.1);
         setPoints(p => p + Math.floor(win));
-        setEventMsg(`🎉 BIG WIN! +${Math.floor(win).toLocaleString()}`);
+        setEventMsg(`🎉 BIG WIN!`);
       } else { setPoints(p => p + (5 * multiplier)); }
-    }, 600); // Snellere stop voor minder blur
+    }, 650);
   };
 
-  // QUEST LOGICA
+  // RADAR QUEST LOGICA
   const handleQuest = (id: string, reward: number, link?: string) => {
     if (claimedQuests.includes(id)) return;
-    
     if (link) {
         window.open(link, '_blank');
-        // Geef de reward na een korte delay (gesimuleerde controle)
         setTimeout(() => {
             setPoints(p => p + reward);
             setClaimedQuests(prev => [...prev, id]);
-            setEventMsg(`✅ QUEST DONE: +${reward}`);
+            setEventMsg(`✅ +${reward.toLocaleString()} CREDITS!`);
             playSfx('win.mp3');
-        }, 2000);
+        }, 3000);
     } else {
         setPoints(p => p + reward);
         setClaimedQuests(prev => [...prev, id]);
@@ -125,13 +127,15 @@ export default function Home() {
   const renderHome = () => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', position: 'relative' }}>
       
-      <div style={{ position: 'absolute', left: '10px', top: '100px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
+      {/* SIDEBAR LINKS (3 knoppen links) */}
+      <div style={{ position: 'absolute', left: '10px', top: '90px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
          <Tappable onClick={() => setView('friends')} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>👥</Tappable>
          <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
          <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
       </div>
 
-      <div style={{ position: 'absolute', right: '10px', top: '100px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
+      {/* SIDEBAR RECHTS (3 knoppen rechts) */}
+      <div style={{ position: 'absolute', right: '10px', top: '90px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
          <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
          <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
          <Tappable onClick={() => { const now = Date.now(); if(now - lastGift > 86400000){ setSpins(s=>s+50); setLastGift(now); setEventMsg("🎁 +50 ENERGY!"); } else { setEventMsg("⏳ NOT READY"); } }} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
@@ -187,8 +191,8 @@ export default function Home() {
                         <Section header="DAILY">
                             <Cell subtitle="+1.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('daily')} onClick={() => handleQuest('daily', 1000)}>{claimedQuests.includes('daily') ? 'DONE' : 'CLAIM'}</Button>}>Daily Check-in</Cell>
                         </Section>
-                        <Section header="UNITY">
-                            <Cell subtitle="+5.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('unity')} onClick={() => handleQuest('unity', 5000, 'https://t.me/your_telegram_channel')}>{claimedQuests.includes('unity') ? 'DONE' : 'JOIN'}</Button>}>Join Community</Cell>
+                        <Section header="SOCIAL">
+                            <Cell subtitle="+5.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('unity')} onClick={() => handleQuest('unity', 5000, 'https://t.me/jouw_kanaal')}>{claimedQuests.includes('unity') ? 'DONE' : 'JOIN'}</Button>}>Join Community</Cell>
                         </Section>
                         <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>BACK TO NEST</Button>
                     </div>
@@ -204,15 +208,21 @@ export default function Home() {
                  ) : view === 'friends' ? (
                     <div style={{ width: '100%', textAlign: 'center' }}>
                         <Headline style={{ color: '#ffcc00' }}>👥 FRIENDS</Headline>
-                        <div style={{ padding: '20px' }}>Recruit friends to your Unity Fleet!</div>
-                        <Button style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText("https://t.me/your_bot"); setEventMsg("COPIED!"); }}>INVITE FRIEND</Button>
-                        <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
+                        <Section header="RECRUIT">
+                            <Title style={{ color: '#ffcc00' }}>0</Title>
+                            <p style={{ fontSize: '12px' }}>Total Recruitments</p>
+                            <Button style={{ width: '100%', marginTop: '10px' }} onClick={() => { navigator.clipboard.writeText("https://t.me/your_bot"); setEventMsg("COPIED!"); }}>INVITE FRIEND</Button>
+                        </Section>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
                     </div>
                  ) : view === 'boss' ? (
                     <div style={{ width: '100%', textAlign: 'center' }}>
                         <Headline style={{ color: '#ff3333' }}>💀 BOSS: VORTIGERN</Headline>
-                        <img src="/image/boss_vortigern.jpeg" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
-                        <Button size="l" onClick={() => setBossHp(h => h - 10000)} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK</Button>
+                        <img src="/image/boss_vortigern.jpeg" alt="Boss" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
+                        <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px', marginBottom: '15px' }}>
+                             <div style={{ width: `${(bossHp / 1000000) * 100}%`, height: '100%', backgroundColor: '#ff3333' }} />
+                        </div>
+                        <Button size="l" onClick={() => setBossHp(h => Math.max(0, h - 10000))} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK</Button>
                         <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
                     </div>
                  ) : (
