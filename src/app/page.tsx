@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, Tappable, Title, Info } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, Tappable, Title } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -11,14 +11,14 @@ export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   
   // --- PERSISTENT STATE ---
-  const [points, setPoints] = useState<number>(14135);
+  const [points, setPoints] = useState<number>(14740);
   const [spins, setSpins] = useState<number>(0); 
   const [stage, setStage] = useState<number>(1);
-  const [view, setView] = useState<'home' | 'radar' | 'fleet' | 'boss' | 'shop' | 'info' | 'friends'>('home');
+  const [view, setView] = useState<'home' | 'radar' | 'boss' | 'shop' | 'info' | 'friends'>('home');
   const [lastGift, setLastGift] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [bossHp, setBossHp] = useState<number>(1000000);
-  const [friendsCount, setFriendsCount] = useState<number>(0);
+  const [multiplier, setMultiplier] = useState<number>(1); // <--- MULTIPLIER (BET)
 
   // --- UI STATE ---
   const [spinning, setSpinning] = useState(false);
@@ -32,10 +32,7 @@ export default function Home() {
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
   const playSfx = (file: string) => {
-    if (!isMuted) {
-      const audio = new Audio(`/sounds/${file}`);
-      audio.play().catch(() => {});
-    }
+    if (!isMuted) { new Audio(`/sounds/${file}`).play().catch(() => {}); }
   };
 
   // --- DATA LOADING ---
@@ -44,21 +41,17 @@ export default function Home() {
     const s = localStorage.getItem('owl_spins');
     const st = localStorage.getItem('owl_stage');
     const lg = localStorage.getItem('owl_last_gift');
-    const fr = localStorage.getItem('owl_friends');
     const welcome = localStorage.getItem('owl_welcome_claimed');
 
     if (p) setPoints(Number(p));
     if (st) setStage(Number(st));
     if (lg) setLastGift(Number(lg));
-    if (fr) setFriendsCount(Number(fr));
 
     if (!welcome) {
       setSpins(500);
       localStorage.setItem('owl_welcome_claimed', 'true');
       setEventMsg("🎁 WELCOME: +500 ENERGY!");
-    } else if (s) {
-      setSpins(Number(s));
-    }
+    } else if (s) { setSpins(Number(s)); }
     setIsLoaded(true);
   }, []);
 
@@ -68,43 +61,36 @@ export default function Home() {
       localStorage.setItem('owl_spins', spins.toString());
       localStorage.setItem('owl_stage', stage.toString());
       localStorage.setItem('owl_last_gift', lastGift.toString());
-      localStorage.setItem('owl_friends', friendsCount.toString());
     }
-  }, [points, spins, stage, lastGift, friendsCount, isLoaded]);
+  }, [points, spins, stage, lastGift, isLoaded]);
 
-  // CADEAU CLAIM
-  const claimDailyGift = () => {
-    const now = Date.now();
-    if (now - lastGift > 86400000) {
-        setSpins(s => s + 50);
-        setLastGift(now);
-        playSfx('win.mp3');
-        setEventMsg("🎁 GIFT CLAIMED!");
-    } else {
-        const h = Math.ceil((86400000 - (now - lastGift)) / 3600000);
-        setEventMsg(`⏳ NEXT IN ${h}H`);
-    }
+  // MULTIPLIER TOGGLE
+  const cycleMultiplier = () => {
+    const next = multiplier === 1 ? 2 : multiplier === 2 ? 5 : multiplier === 5 ? 10 : 1;
+    setMultiplier(next);
+    playSfx('click.mp3');
   };
 
-  // AUTO SPIN ENGINE
+  // AUTO SPIN LOGIC
   useEffect(() => {
     let timer: any;
-    if (autoSpin && spins > 0 && !spinning && gameStarted) {
+    if (autoSpin && spins >= multiplier && !spinning && gameStarted) {
       timer = setTimeout(() => spinAction(), 1500);
-    } else if (spins <= 0) {
-      setAutoSpin(false);
-    }
+    } else if (spins < multiplier) { setAutoSpin(false); }
     return () => clearTimeout(timer);
-  }, [autoSpin, spins, spinning, gameStarted]);
+  }, [autoSpin, spins, spinning, gameStarted, multiplier]);
 
   const spinAction = () => {
-    if (spinning || spins <= 0) return;
+    if (spinning || spins < multiplier) { setAutoSpin(false); return; }
     playSfx('click.mp3');
     setSpinning(true);
-    setSpins(prev => prev - 1);
+    setSpins(prev => prev - multiplier);
+    setEventMsg('');
+
     const interval = setInterval(() => {
       setReels([icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]]);
     }, 50);
+
     setTimeout(() => {
       clearInterval(interval);
       const res = [icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]];
@@ -112,55 +98,57 @@ export default function Home() {
       setSpinning(false);
       if (res[0] === res[1] && res[1] === res[2]) {
         playSfx('win.mp3');
-        const win = (res[0] === '🦉' ? 10000 : 2500) * (1 + stage * 0.1);
+        const win = (res[0] === '🦉' ? 10000 : 2500) * multiplier * (1 + stage * 0.1);
         setPoints(p => p + Math.floor(win));
         setEventMsg(`🎉 BIG WIN!`);
-      } else { setPoints(p => p + 5); }
+      } else { setPoints(p => p + (5 * multiplier)); }
     }, 800);
   };
 
   const renderHome = () => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', position: 'relative' }}>
       
-      {/* LEFT SIDEBAR (3 BUTTONS) */}
-      <div style={{ position: 'absolute', left: '15px', top: '100px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 100 }}>
-         <Tappable onClick={() => setView('friends')} style={{ backgroundColor: '#ffcc00', width: '48px', height: '48px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 8px rgba(0,0,0,0.5)' }}>👥</Tappable>
-         <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '48px', height: '48px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
-         <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '48px', height: '48px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
+      {/* SIDEBAR LINKS (👥, 📡, ℹ️) */}
+      <div style={{ position: 'absolute', left: '10px', top: '100px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
+         <Tappable onClick={() => setView('friends')} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>👥</Tappable>
+         <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
+         <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
       </div>
 
-      {/* RIGHT SIDEBAR (3 BUTTONS) */}
-      <div style={{ position: 'absolute', right: '15px', top: '100px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 100 }}>
-         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '48px', height: '48px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
-         <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '48px', height: '48px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
-         <Tappable onClick={claimDailyGift} style={{ backgroundColor: '#ffcc00', width: '48px', height: '48px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
+      {/* SIDEBAR RECHTS (💀, 🛒, 🎁) */}
+      <div style={{ position: 'absolute', right: '10px', top: '100px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
+         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
+         <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
+         <Tappable onClick={() => { const now = Date.now(); if(now - lastGift > 86400000){ setSpins(s=>s+50); setLastGift(now); setEventMsg("🎁 +50 ENERGY!"); } else { setEventMsg("⏳ NOT READY"); } }} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
       </div>
 
-      {/* MAIN OWL DISPLAY */}
-      <div style={{ margin: '10px 0', height: '170px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      {/* MAIN OWL */}
+      <div style={{ margin: '5px 0', height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
          <img src={`/image/owl_${stage > 15 ? 15 : stage}.jpeg`} alt="Owl" style={{ height: '100%', filter: `drop-shadow(0 0 ${Math.min(stage, 25)}px gold)` }} />
-         <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: '900', marginTop: '5px' }}>LVL {stage} | UNBREAKABLE</div>
+         <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 10px', borderRadius: '10px', fontSize: '10px', fontWeight: '900', marginTop: '5px' }}>LVL {stage} | UNBREAKABLE</div>
       </div>
 
-      {/* ENERGY SECTION */}
-      <div style={{ width: '90%', marginBottom: '15px' }}>
-        <div style={{ width: '100%', height: '26px', backgroundColor: '#111', borderRadius: '13px', border: '2px solid #444', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* ENERGY BAR SECTION */}
+      <div style={{ width: '85%', marginBottom: '15px' }}>
+        <div style={{ width: '100%', height: '28px', backgroundColor: '#111', borderRadius: '14px', border: '2px solid #444', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, height: '100%', position: 'absolute', left: 0, backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', transition: 'width 0.4s' }} />
             <span style={{ position: 'relative', color: 'white', fontSize: '14px', fontWeight: '900', textShadow: '1px 1px 3px black', zIndex: 5 }}>{spins.toLocaleString()} / {BASE_ENERGY}</span>
         </div>
         
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '12px' }}>
+        {/* DASHBOARD: AUTO, MULTIPLIER, SOUND */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
             <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
+            <Button size="s" mode="filled" onClick={cycleMultiplier} style={{ backgroundColor: '#ffcc00', color: 'black' }}>BET x{multiplier}</Button>
             <Button size="s" mode="bezeled" onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈' : '🔊'}</Button>
         </div>
       </div>
 
-      {/* REELS & SPIN */}
+      {/* REELS */}
       <div style={{ margin: '20px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '25px', border: '2px solid #ffcc00' }}>
-        {reels.map((s, i) => (<div key={i} style={{ fontSize: '36px', width: '65px', height: '85px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
+        {reels.map((s, i) => (<div key={i} style={{ fontSize: '36px', width: '65px', height: '85px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
       </div>
 
-      <button onClick={spinAction} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00', cursor: 'pointer' }}>SPIN</button>
+      <button onClick={spinAction} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00' }}>SPIN</button>
     </div>
   );
 
@@ -183,46 +171,43 @@ export default function Home() {
         ) : (
             <>
                 {view === 'home' ? renderHome() : 
-                 view === 'friends' ? (
-                    <div style={{ width: '100%', padding: '10px', textAlign: 'center' }}>
-                        <Headline style={{ color: '#ffcc00', marginBottom: '15px' }}>👥 UNITY FLEET</Headline>
-                        <Section header="RECRUIT">
-                            <Title style={{ color: '#ffcc00' }}>{friendsCount}</Title>
-                            <Button style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText("https://t.me/your_bot"); setEventMsg("LINK COPIED!"); }}>COPY LINK</Button>
+                 view === 'shop' ? (
+                    <div style={{ width: '100%' }}>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 SHOP</Headline>
+                        <Section header="RESOURCES">
+                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { setPoints(p=>p-5000); setSpins(s=>s+50); }}>BUY</Button>}>+50 ENERGY</Cell>
+                            <Cell subtitle="10.000 Credits" after={<Button size="s" onClick={() => { setPoints(p=>p-10000); setStage(s=>s+1); }}>UPGRADE</Button>}>LEVEL UP</Cell>
                         </Section>
                         <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
+                    </div>
+                 ) : view === 'radar' ? (
+                    <div style={{ width: '100%' }}>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR</Headline>
+                        <Section header="MISSIONS"><Cell after={<Button size="s" onClick={() => setPoints(p=>p+1000)}>CLAIM</Button>}>Daily Check-in</Cell></Section>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
+                    </div>
+                 ) : view === 'friends' ? (
+                    <div style={{ width: '100%', textAlign: 'center' }}>
+                        <Headline style={{ color: '#ffcc00' }}>👥 FRIENDS</Headline>
+                        <Button style={{ width: '100%', marginTop: '20px' }} onClick={() => { navigator.clipboard.writeText("https://t.me/your_bot"); setEventMsg("COPIED!"); }}>INVITE FRIEND</Button>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
                     </div>
                  ) : view === 'boss' ? (
                     <div style={{ width: '100%', textAlign: 'center' }}>
                         <Headline style={{ color: '#ff3333' }}>💀 BOSS: VORTIGERN</Headline>
                         <img src="/image/boss_vortigern.jpeg" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
                         <Button size="l" onClick={() => setBossHp(h => h - 10000)} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK</Button>
-                        <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '10px' }}>BACK</Button>
-                    </div>
-                 ) : view === 'shop' ? (
-                    <div style={{ width: '100%' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 SHOP</Headline>
-                        <Section header="RESOURCES">
-                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000){ setPoints(p=>p-5000); setSpins(s=>s+50); } }}>BUY</Button>}>+50 ENERGY</Cell>
-                            <Cell subtitle="Upgrade" after={<Button size="s" onClick={() => { if(points >= 10000){ setPoints(p=>p-10000); setStage(s=>s+1); } }}>LVL UP</Button>}>EVOLVE OWL</Cell>
-                        </Section>
-                        <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK</Button>
-                    </div>
-                 ) : view === 'radar' ? (
-                    <div style={{ width: '100%' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR</Headline>
-                        <Section header="DAILY"><Cell after={<Button size="s" onClick={() => setPoints(p=>p+1000)}>CLAIM</Button>}>Daily Check-in</Cell></Section>
-                        <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '20px' }}>BACK</Button>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
                     </div>
                  ) : (
                     <div style={{ width: '100%', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
                         <Headline style={{ color: '#ffcc00' }}>ℹ️ WIKI</Headline>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', padding: '10px' }}>
+                        <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                             {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(i => (
                                 <div key={i}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '8px' }} /><span style={{ fontSize: '10px' }}>LVL {i}</span></div>
                             ))}
                         </div>
-                        <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '10px' }}>BACK</Button>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
                     </div>
                  )}
             </>
