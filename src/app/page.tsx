@@ -11,13 +11,12 @@ export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   
   // --- PERSISTENT STATE ---
-  const [points, setPoints] = useState<number>(14740);
+  const [points, setPoints] = useState<number>(0);
   const [spins, setSpins] = useState<number>(0); 
   const [stage, setStage] = useState<number>(1);
   const [view, setView] = useState<'home' | 'radar' | 'fleet' | 'boss' | 'shop' | 'info' | 'friends'>('home');
   const [lastGift, setLastGift] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [bossHp, setBossHp] = useState<number>(1000000);
   const [multiplier, setMultiplier] = useState<number>(1); 
   const [claimedQuests, setClaimedQuests] = useState<string[]>([]);
 
@@ -36,7 +35,7 @@ export default function Home() {
     if (!isMuted) { new Audio(`/sounds/${file}`).play().catch(() => {}); }
   };
 
-  // --- DATA LOADING ---
+  // --- DATA SYNC ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
@@ -45,10 +44,10 @@ export default function Home() {
     const cq = localStorage.getItem('owl_claimed_quests');
     const welcome = localStorage.getItem('owl_welcome_claimed');
 
-    if (p) setPoints(Math.max(0, Number(p))); // Voorkom negatief bij laden
+    if (p) setPoints(Math.max(0, Number(p))); 
     if (st) setStage(Number(st));
     if (lg) setLastGift(Number(lg));
-    if (cq) setClaimedQuests(JSON.parse(cq));
+    if (cq) { try { setClaimedQuests(JSON.parse(cq)); } catch(e) { setClaimedQuests([]); } }
 
     if (!welcome) {
       setSpins(500);
@@ -68,7 +67,7 @@ export default function Home() {
     }
   }, [points, spins, stage, lastGift, claimedQuests, isLoaded]);
 
-  // AUTO SPIN LOGIC
+  // AUTO SPIN
   useEffect(() => {
     let timer: any;
     if (autoSpin && spins >= multiplier && !spinning && gameStarted) {
@@ -99,34 +98,41 @@ export default function Home() {
         setPoints(p => p + Math.floor(win));
         setEventMsg(`🎉 BIG WIN! +${Math.floor(win).toLocaleString()}`);
       } else { setPoints(p => p + (5 * multiplier)); }
-    }, 700);
+    }, 600); // Snellere stop voor minder blur
   };
 
-  // --- UPGRADE CHECK (Geen schulden meer!) ---
-  const handleUpgrade = (cost: number) => {
-    if (points >= cost) {
-      setPoints(p => p - cost);
-      setStage(s => s + 1);
-      playSfx('win.mp3');
-      setEventMsg("🆙 LEVEL UP!");
+  // QUEST LOGICA
+  const handleQuest = (id: string, reward: number, link?: string) => {
+    if (claimedQuests.includes(id)) return;
+    
+    if (link) {
+        window.open(link, '_blank');
+        // Geef de reward na een korte delay (gesimuleerde controle)
+        setTimeout(() => {
+            setPoints(p => p + reward);
+            setClaimedQuests(prev => [...prev, id]);
+            setEventMsg(`✅ QUEST DONE: +${reward}`);
+            playSfx('win.mp3');
+        }, 2000);
     } else {
-      setEventMsg("❌ NOT ENOUGH CREDITS!");
+        setPoints(p => p + reward);
+        setClaimedQuests(prev => [...prev, id]);
+        setEventMsg("✅ CLAIMED!");
+        playSfx('win.mp3');
     }
   };
 
   const renderHome = () => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', position: 'relative' }}>
       
-      {/* SIDEBAR LINKS */}
       <div style={{ position: 'absolute', left: '10px', top: '100px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
          <Tappable onClick={() => setView('friends')} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>👥</Tappable>
          <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
          <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
       </div>
 
-      {/* SIDEBAR RECHTS */}
       <div style={{ position: 'absolute', right: '10px', top: '100px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
-         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
+         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 0 10px red' }}>💀</Tappable>
          <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
          <Tappable onClick={() => { const now = Date.now(); if(now - lastGift > 86400000){ setSpins(s=>s+50); setLastGift(now); setEventMsg("🎁 +50 ENERGY!"); } else { setEventMsg("⏳ NOT READY"); } }} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
       </div>
@@ -141,7 +147,6 @@ export default function Home() {
             <div style={{ width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, height: '100%', position: 'absolute', left: 0, backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', transition: 'width 0.4s' }} />
             <span style={{ position: 'relative', color: 'white', fontSize: '14px', fontWeight: '900', textShadow: '1px 1px 3px black', zIndex: 5 }}>{spins.toLocaleString()} / {BASE_ENERGY}</span>
         </div>
-        
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
             <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
             <Button size="s" mode="filled" onClick={() => setMultiplier(m => m === 10 ? 1 : m === 5 ? 10 : m === 2 ? 5 : 2)} style={{ backgroundColor: '#ffcc00', color: 'black' }}>BET x{multiplier}</Button>
@@ -164,7 +169,7 @@ export default function Home() {
         <audio ref={bgMusicRef} src="/sounds/Got 5 on it Symphonic Horror trap FM 152bpm.mp3" loop muted={isMuted} />
 
         <div style={{ width: '100%', backgroundColor: 'rgba(0,0,0,0.9)', padding: '12px', borderRadius: '18px', borderBottom: '3px solid #ffcc00', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><span>💰</span><span style={{ fontWeight: '900', color: points < 0 ? '#ff3333' : '#ffcc00' }}>{points.toLocaleString()}</span></div>
+            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}><span>💰</span><span style={{ fontWeight: '900', color: '#ffcc00' }}>{points.toLocaleString()}</span></div>
             <TonConnectButton />
         </div>
 
@@ -180,19 +185,19 @@ export default function Home() {
                     <div style={{ width: '100%', padding: '10px' }}>
                         <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>📡 RADAR MISSIONS</Headline>
                         <Section header="DAILY">
-                            <Cell subtitle="+1.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('daily')} onClick={() => { setPoints(p=>p+1000); setClaimedQuests([...claimedQuests, 'daily']); setEventMsg("CLAIMED!"); }}>{claimedQuests.includes('daily') ? 'DONE' : 'CLAIM'}</Button>}>Daily Check-in</Cell>
+                            <Cell subtitle="+1.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('daily')} onClick={() => handleQuest('daily', 1000)}>{claimedQuests.includes('daily') ? 'DONE' : 'CLAIM'}</Button>}>Daily Check-in</Cell>
                         </Section>
                         <Section header="UNITY">
-                            <Cell subtitle="+5.000 Credits" after={<Button size="s" onClick={() => alert("Join our Telegram!")}>JOIN</Button>}>Join Community</Cell>
+                            <Cell subtitle="+5.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('unity')} onClick={() => handleQuest('unity', 5000, 'https://t.me/your_telegram_channel')}>{claimedQuests.includes('unity') ? 'DONE' : 'JOIN'}</Button>}>Join Community</Cell>
                         </Section>
-                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>BACK TO NEST</Button>
                     </div>
                  ) : view === 'shop' ? (
                     <div style={{ width: '100%' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 SHOP</Headline>
-                        <Section header="UPGRADES">
-                            <Cell subtitle={`${(stage * 10000).toLocaleString()} Credits`} after={<Button size="s" onClick={() => handleUpgrade(stage * 10000)}>LVL UP</Button>}>EVOLVE OWL</Cell>
-                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000){ setPoints(p=>p-5000); setSpins(s=>s+50); } else { setEventMsg("NO CREDITS"); } }}>BUY</Button>}>+50 ENERGY</Cell>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 PREMIUM SHOP</Headline>
+                        <Section header="RESOURCES">
+                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000){ setPoints(p=>p-5000); setSpins(s=>s+50); playSfx('win.mp3'); } else { setEventMsg("NO CREDITS"); } }}>BUY</Button>}>+50 ENERGY</Cell>
+                            <Cell subtitle={`${(stage * 10000).toLocaleString()} Credits`} after={<Button size="s" onClick={() => { if(points >= stage * 10000){ setPoints(p=>p-(stage*10000)); setStage(s=>s+1); playSfx('win.mp3'); } else { setEventMsg("NO CREDITS"); } }}>LVL UP</Button>}>EVOLVE OWL</Cell>
                         </Section>
                         <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK</Button>
                     </div>
@@ -213,7 +218,7 @@ export default function Home() {
                  ) : (
                     <div style={{ width: '100%', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
                         <Headline style={{ color: '#ffcc00' }}>ℹ️ WIKI</Headline>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', padding: '10px' }}>
+                        <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                             {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(i => (
                                 <div key={i}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '8px' }} /><span style={{ fontSize: '10px' }}>LVL {i}</span></div>
                             ))}
