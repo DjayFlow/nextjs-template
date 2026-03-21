@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Button, Cell, Section, Headline, Tappable, Title, Info, List } from '@telegram-apps/telegram-ui';
+import { Button, Cell, Section, Headline, Tappable, Title, Info } from '@telegram-apps/telegram-ui';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
@@ -10,7 +10,7 @@ const BASE_ENERGY = 50;
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
   
-  // --- STATE ---
+  // --- PERSISTENT STATE ---
   const [points, setPoints] = useState<number>(14135);
   const [spins, setSpins] = useState<number>(0); 
   const [stage, setStage] = useState<number>(1);
@@ -18,7 +18,9 @@ export default function Home() {
   const [lastGift, setLastGift] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [bossHp, setBossHp] = useState<number>(1000000);
-  const [friendsCount, setFriendsCount] = useState<number>(0); // Nieuwe state voor vrienden
+  const [friendsCount, setFriendsCount] = useState<number>(0);
+
+  // --- UI STATE ---
   const [spinning, setSpinning] = useState(false);
   const [autoSpin, setAutoSpin] = useState(false);
   const [reels, setReels] = useState(['🦉', '🎰', '💎']);
@@ -36,7 +38,7 @@ export default function Home() {
     }
   };
 
-  // --- DATA SYNC ---
+  // --- DATA LOADING & GIFTS ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
@@ -70,20 +72,29 @@ export default function Home() {
     }
   }, [points, spins, stage, lastGift, friendsCount, isLoaded]);
 
-  // INVITE LINK GENERATOR
-  const copyInviteLink = () => {
-    const link = `https://t.me/jouw_bot_naam?start=ref${Math.floor(Math.random()*100000)}`;
-    navigator.clipboard.writeText(link);
-    setEventMsg("🔗 LINK COPIED!");
-    playSfx('win.mp3');
+  // CADEAU LOGICA
+  const claimDailyGift = () => {
+    const now = Date.now();
+    const cooldown = 86400000;
+    if (now - lastGift > cooldown) {
+        setSpins(s => s + 50);
+        setLastGift(now);
+        playSfx('win.mp3');
+        setEventMsg("🎁 GIFT: +50 ENERGY!");
+    } else {
+        const h = Math.ceil((cooldown - (now - lastGift)) / 3600000);
+        setEventMsg(`⏳ NEXT IN ${h}H`);
+    }
   };
 
-  // AUTO SPIN
+  // AUTO SPIN ENGINE
   useEffect(() => {
     let timer: any;
     if (autoSpin && spins > 0 && !spinning && gameStarted) {
       timer = setTimeout(() => spinAction(), 1500);
-    } else if (spins <= 0) { setAutoSpin(false); }
+    } else if (spins <= 0) {
+      setAutoSpin(false);
+    }
     return () => clearTimeout(timer);
   }, [autoSpin, spins, spinning, gameStarted]);
 
@@ -92,6 +103,7 @@ export default function Home() {
     playSfx('click.mp3');
     setSpinning(true);
     setSpins(prev => prev - 1);
+    setEventMsg('');
     const interval = setInterval(() => {
       setReels([icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)], icons[Math.floor(Math.random()*7)]]);
     }, 50);
@@ -109,29 +121,7 @@ export default function Home() {
     }, 800);
   };
 
-  // --- NEW VIEWS ---
-
-  const renderFriends = () => (
-    <div style={{ width: '100%', padding: '10px', animation: 'fadeIn 0.5s forwards' }}>
-      <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '20px' }}>👥 UNITY FLEET</Headline>
-      
-      <Section header="INVITE FRIENDS" footer="Invite a friend and get +100 Energy instantly!">
-          <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'rgba(255,204,0,0.1)', borderRadius: '15px', border: '1px solid #ffcc00' }}>
-              <Title style={{ color: '#ffcc00' }}>{friendsCount}</Title>
-              <p style={{ fontSize: '12px' }}>Total Friends Recruited</p>
-              <Button onClick={copyInviteLink} style={{ marginTop: '15px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>COPY INVITE LINK</Button>
-          </div>
-      </Section>
-
-      <Section header="TOP RECRUITERS (GLOBAL)">
-          <Cell before={<span>🥇</span>} after={<span style={{color:'#ffcc00'}}>1.2k</span>}>OwlKing_99</Cell>
-          <Cell before={<span>🥈</span>} after={<span style={{color:'#ffcc00'}}>850</span>}>VoidHunter</Cell>
-          <Cell before={<span>🥉</span>} after={<span style={{color:'#ffcc00'}}>420</span>}>RespectUnity</Cell>
-      </Section>
-
-      <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK TO NEST</Button>
-    </div>
-  );
+  // --- RENDERS ---
 
   const renderHome = () => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
@@ -140,27 +130,29 @@ export default function Home() {
          <div style={{ backgroundColor: '#ffcc00', color: 'black', padding: '2px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: '900', marginTop: '5px' }}>LVL {stage} | UNBREAKABLE</div>
       </div>
 
+      {/* ENERGY BALK MET CIJFERS */}
       <div style={{ width: '90%', marginBottom: '15px', position: 'relative' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span style={{ fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>🧪 ENERGY POWER</span>
-        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{ fontSize: '10px', color: '#ffcc00', fontWeight: 'bold' }}>🧪 ENERGY POWER</span></div>
         <div style={{ width: '100%', height: '26px', backgroundColor: '#111', borderRadius: '13px', border: '2px solid #444', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, height: '100%', position: 'absolute', left: 0, backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', transition: 'width 0.4s ease-out' }} />
+            <div style={{ width: `${Math.min((spins / BASE_ENERGY) * 100, 100)}%`, height: '100%', position: 'absolute', left: 0, backgroundColor: spins > BASE_ENERGY ? '#ffcc00' : '#00ffcc', transition: 'width 0.4s' }} />
             <span style={{ position: 'relative', color: 'white', fontSize: '14px', fontWeight: '900', textShadow: '1px 1px 3px black', zIndex: 5 }}>{spins.toLocaleString()} / {BASE_ENERGY}</span>
         </div>
+        
+        {/* DASHBOARD TERUG: AUTO & SOUND */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
             <Button size="s" mode={autoSpin ? 'filled' : 'bezeled'} onClick={() => setAutoSpin(!autoSpin)}>{autoSpin ? 'AUTO: ON' : 'AUTO: OFF'}</Button>
             <Button size="s" mode="bezeled" onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈' : '🔊'}</Button>
         </div>
       </div>
 
-      {/* SIDEBAR NAVIGATION (Nieuwe Friends knop 👥) */}
+      {/* SIDE NAVIGATION COMPLEET (6 BUTTONS) */}
       <div style={{ display: 'flex', gap: '12px', position: 'absolute', right: '15px', top: '100px', flexDirection: 'column', zIndex: 100 }}>
          <Tappable onClick={() => setView('friends')} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>👥</Tappable>
          <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
          <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
          <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
          <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
+         <Tappable onClick={claimDailyGift} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
       </div>
 
       <div style={{ margin: '20px 0', display: 'flex', gap: '8px', backgroundColor: 'rgba(0,0,0,0.6)', padding: '20px', borderRadius: '25px', border: '2px solid #ffcc00' }}>
@@ -190,26 +182,42 @@ export default function Home() {
         ) : (
             <>
                 {view === 'home' ? renderHome() : 
-                 view === 'friends' ? renderFriends() :
-                 view === 'boss' ? (
+                 view === 'friends' ? (
+                    <div style={{ width: '100%', padding: '10px', textAlign: 'center' }}>
+                        <Headline style={{ color: '#ffcc00', marginBottom: '15px' }}>👥 UNITY FLEET</Headline>
+                        <Section header="RECRUIT">
+                            <Title style={{ color: '#ffcc00' }}>{friendsCount}</Title>
+                            <p style={{ fontSize: '12px', marginBottom: '15px' }}>Total Friends Recruited</p>
+                            <Button style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText("https://t.me/your_bot"); setEventMsg("LINK COPIED!"); }}>COPY INVITE LINK</Button>
+                        </Section>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
+                    </div>
+                 ) : view === 'boss' ? (
                     <div style={{ width: '100%', textAlign: 'center' }}>
                         <Headline style={{ color: '#ff3333' }}>💀 BOSS: VORTIGERN</Headline>
                         <img src="/image/boss_vortigern.jpeg" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
-                        <Button size="l" onClick={() => setBossHp(h => Math.max(0, h - 10000))} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK BOSS</Button>
+                        <Button size="l" onClick={() => setBossHp(h => h - 10000)} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK</Button>
                         <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '10px' }}>BACK</Button>
                     </div>
                  ) : view === 'shop' ? (
                     <div style={{ width: '100%' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 PREMIUM SHOP</Headline>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 SHOP</Headline>
                         <Section header="RESOURCES">
-                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { setPoints(p => p - 5000); setSpins(s => s + 50); }}>BUY</Button>}>+50 ENERGY</Cell>
+                            <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { setPoints(p=>p-5000); setSpins(s=>s+50); }}>BUY</Button>}>+50 ENERGY</Cell>
+                            <Cell subtitle={`${stage * 10000} Credits`} after={<Button size="s" onClick={() => { setPoints(p=>p-(stage*10000)); setStage(s=>s+1); }}>UPGRADE</Button>}>EVOLVE OWL</Cell>
                         </Section>
                         <Button onClick={() => setView('home')} mode="filled" style={{ width: '100%', backgroundColor: '#ffcc00', color: 'black', marginTop: '20px' }}>BACK</Button>
+                    </div>
+                 ) : view === 'radar' ? (
+                    <div style={{ width: '100%' }}>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR HUB</Headline>
+                        <Section header="DAILY"><Cell before={<span>✅</span>} after={<Button size="s" onClick={() => setPoints(p=>p+1000)}>CLAIM</Button>}>Daily Login</Cell></Section>
+                        <Button onClick={() => setView('home')} style={{ width: '100%', marginTop: '20px' }}>BACK</Button>
                     </div>
                  ) : (
                     <div style={{ width: '100%', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
                         <Headline style={{ color: '#ffcc00' }}>ℹ️ WIKI</Headline>
-                        <div style={{ padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', padding: '10px' }}>
                             {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(i => (
                                 <div key={i}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '8px' }} /><span style={{ fontSize: '10px' }}>LVL {i}</span></div>
                             ))}
