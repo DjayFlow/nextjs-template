@@ -6,7 +6,7 @@ import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 
 const BASE_ENERGY = 50; 
-const CREDIT_LIMIT = 200; // Jouw regel: vanaf 200 betalen met TON
+const CREDIT_LIMIT = 200; 
 
 export default function Home() {
   const [tonConnectUI] = useTonConnectUI();
@@ -33,7 +33,7 @@ export default function Home() {
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const icons = ['🦉', '💰', '💎', '🎰', '🔥', '🦹', '🔨'];
 
-  // --- DATA LOADING ---
+  // --- SYNC & LOAD ---
   useEffect(() => {
     const p = localStorage.getItem('owl_points');
     const s = localStorage.getItem('owl_spins');
@@ -68,31 +68,7 @@ export default function Home() {
     }
   }, [points, spins, stage, lastGift, bossHp, claimedQuests, isLoaded]);
 
-  // --- TON PAYMENT FUNCTION ---
-  const handleTonUpgrade = async () => {
-    if (!tonConnectUI.connected) {
-      setEventMsg("❌ CONNECT WALLET!");
-      return;
-    }
-
-    const transaction = {
-      validUntil: Math.floor(Date.now() / 1000) + 60,
-      messages: [{
-        address: "UQCHoXWzQZgYjE_9j_l_7pB08M9Y7M7N7O7P7Q7R7S7T", // VUL HIER JE EIGEN ADRES IN
-        amount: "500000000", // 0.5 TON
-      }]
-    };
-
-    try {
-      await tonConnectUI.sendTransaction(transaction);
-      setStage(s => s + 1);
-      setEventMsg("💎 DIVINE UPGRADE!");
-    } catch (e) {
-      setEventMsg("❌ PAYMENT FAILED");
-    }
-  };
-
-  // --- SPIN LOGIC ---
+  // --- GAME ACTIONS ---
   const spinAction = () => {
     if (spinning || spins < multiplier) { setAutoSpin(false); return; }
     setSpinning(true);
@@ -121,20 +97,44 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [autoSpin, spins, spinning, gameStarted, multiplier]);
 
-  // --- UI COMPONENTS ---
+  const handleUpgrade = async () => {
+    if (stage < CREDIT_LIMIT) {
+        const cost = stage * 10000;
+        if (points >= cost) {
+            setPoints(p => p - cost);
+            setStage(s => s + 1);
+            setEventMsg("🆙 LEVEL UP!");
+        } else { setEventMsg("❌ NO CREDITS"); }
+    } else {
+        if (!tonConnectUI.connected) { setEventMsg("❌ CONNECT WALLET!"); return; }
+        const transaction = {
+            validUntil: Math.floor(Date.now() / 1000) + 60,
+            messages: [{ address: "JOUW_TON_ADRES", amount: "500000000" }]
+        };
+        try {
+            await tonConnectUI.sendTransaction(transaction);
+            setStage(s => s + 1);
+            setEventMsg("💎 DIVINE UPGRADE!");
+        } catch (e) { setEventMsg("❌ FAILED"); }
+    }
+  };
+
+  // --- VIEW RENDERS ---
 
   const renderHome = () => (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', position: 'relative' }}>
-      {/* Sidebar Navigation */}
-      <div style={{ position: 'absolute', left: '10px', top: '90px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
-         <Tappable onClick={() => setView('friends')} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>👥</Tappable>
-         <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
-         <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
+      {/* Sidebar Left */}
+      <div style={{ position: 'absolute', left: '10px', top: '80px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 100 }}>
+         <Tappable onClick={() => setView('friends')} style={{ backgroundColor: '#ffcc00', width: '46px', height: '46px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>👥</Tappable>
+         <Tappable onClick={() => setView('radar')} style={{ backgroundColor: '#111', width: '46px', height: '46px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>📡</Tappable>
+         <Tappable onClick={() => setView('info')} style={{ backgroundColor: '#111', width: '46px', height: '46px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>ℹ️</Tappable>
       </div>
-      <div style={{ position: 'absolute', right: '10px', top: '90px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 100 }}>
-         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
-         <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '45px', height: '45px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
-         <Tappable onClick={() => { const now = Date.now(); if(now - lastGift > 86400000){ setSpins(s=>s+50); setLastGift(now); setEventMsg("🎁 +50 ENERGY!"); } else { setEventMsg("⏳ NOT READY"); } }} style={{ backgroundColor: '#ffcc00', width: '45px', height: '45px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
+
+      {/* Sidebar Right */}
+      <div style={{ position: 'absolute', right: '10px', top: '80px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 100 }}>
+         <Tappable onClick={() => setView('boss')} style={{ backgroundColor: '#ff3333', width: '46px', height: '46px', borderRadius: '50%', border: '2px solid white', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>💀</Tappable>
+         <Tappable onClick={() => setView('shop')} style={{ backgroundColor: '#111', width: '46px', height: '46px', borderRadius: '50%', border: '1px solid #444', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🛒</Tappable>
+         <Tappable onClick={() => { const now = Date.now(); if(now - lastGift > 86400000){ setSpins(s=>s+50); setLastGift(now); setEventMsg("🎁 +50 ENERGY!"); } else { setEventMsg("⏳ NOT READY"); } }} style={{ backgroundColor: '#ffcc00', width: '46px', height: '46px', borderRadius: '50%', border: '2px solid black', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>🎁</Tappable>
       </div>
 
       <div style={{ margin: '5px 0', height: '160px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -160,7 +160,7 @@ export default function Home() {
         {reels.map((s, i) => (<div key={i} style={{ fontSize: '36px', width: '65px', height: '85px', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', filter: spinning ? 'blur(8px)' : 'none' }}>{s}</div>))}
       </div>
 
-      <button onClick={spinAction} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00', cursor: 'pointer' }}>SPIN</button>
+      <button onClick={() => { if(!spinning) spinAction(); }} disabled={spinning} style={{ width: '130px', height: '130px', borderRadius: '50%', border: 'none', backgroundColor: spinning ? '#333' : '#ffcc00', color: 'black', fontSize: '28px', fontWeight: '900', boxShadow: spinning ? 'none' : '0 10px 0 #997a00', cursor: 'pointer' }}>SPIN</button>
     </div>
   );
 
@@ -181,56 +181,66 @@ export default function Home() {
                 <Button size="l" onClick={() => { setGameStarted(true); if(bgMusicRef.current) bgMusicRef.current.play(); }}>🚀 START GAME</Button>
             </div>
         ) : (
-            <>
-                {view === 'home' ? renderHome() : 
-                 view === 'radar' ? (
-                    <div style={{ width: '100%', padding: '10px' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>📡 RADAR MISSIONS</Headline>
-                        <Section header="TASKS">
-                            <Cell subtitle="+1.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('daily')} onClick={() => { setPoints(p=>p+1000); setClaimedQuests([...claimedQuests, 'daily']); setEventMsg("CLAIMED!"); }}>{claimedQuests.includes('daily') ? 'DONE' : 'CLAIM'}</Button>}>Daily Check-in</Cell>
+            <div style={{ width: '100%', flex: 1 }}>
+                {view === 'home' && renderHome()}
+                
+                {view === 'friends' && (
+                    <div style={{ textAlign: 'center', padding: '10px' }}>
+                        <Headline style={{ color: '#ffcc00' }}>👥 FRIENDS</Headline>
+                        <Section header="UNITY FLEET">
+                            <Cell subtitle="Invite friends to earn 100 Energy!">0 Recruits</Cell>
+                            <Button style={{ width: '100%', marginTop: '10px' }} onClick={() => { navigator.clipboard.writeText("https://t.me/your_bot"); setEventMsg("LINK COPIED!"); }}>INVITE FRIEND</Button>
+                        </Section>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
+                    </div>
+                )}
+
+                {view === 'radar' && (
+                    <div style={{ padding: '10px' }}>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>📡 RADAR</Headline>
+                        <Section header="MISSIONS">
+                            <Cell subtitle="+1.000 Credits" after={<Button size="s" disabled={claimedQuests.includes('daily')} onClick={() => { setPoints(p=>p+1000); setClaimedQuests([...claimedQuests, 'daily']); setEventMsg("CLAIMED!"); }}>{claimedQuests.includes('daily') ? 'DONE' : 'CLAIM'}</Button>}>Daily Login</Cell>
                             <Cell subtitle="+5.000 Credits" after={<Button size="s" onClick={() => window.open('https://t.me/your_channel', '_blank')}>JOIN</Button>}>Join Community</Cell>
                         </Section>
-                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>BACK TO NEST</Button>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
                     </div>
-                 ) : view === 'shop' ? (
-                    <div style={{ width: '100%', padding: '10px' }}>
-                        <Headline style={{ textAlign: 'center', color: '#ffcc00', marginBottom: '15px' }}>🛒 PREMIUM SHOP</Headline>
+                )}
+
+                {view === 'shop' && (
+                    <div style={{ padding: '10px' }}>
+                        <Headline style={{ textAlign: 'center', color: '#ffcc00' }}>🛒 SHOP</Headline>
                         <Section header="UPGRADES">
-                            {stage < CREDIT_LIMIT ? (
-                                <Cell subtitle={`${(stage * 10000).toLocaleString()} Credits`} after={<Button size="s" onClick={() => { if(points >= stage * 10000) { setPoints(p=>p-(stage*10000)); setStage(s=>s+1); setEventMsg("LEVEL UP!"); } else { setEventMsg("NO CREDITS"); } }}>LVL UP</Button>}>EVOLVE OWL</Cell>
-                            ) : (
-                                <Cell subtitle="0.5 TON Required" after={<Button size="s" style={{backgroundColor:'#00ffcc', color:'black'}} onClick={handleTonUpgrade}>DIVINE UPGRADE</Button>}>LEVEL {stage} ➔ {stage+1}</Cell>
-                            )}
+                            <Cell subtitle={stage < CREDIT_LIMIT ? `${(stage * 10000).toLocaleString()} Credits` : "0.5 TON"} after={<Button size="s" onClick={handleUpgrade}>UPGRADE</Button>}>LEVEL UP</Cell>
                             <Cell subtitle="5.000 Credits" after={<Button size="s" onClick={() => { if(points >= 5000){ setPoints(p=>p-5000); setSpins(s=>s+50); } }}>BUY</Button>}>+50 ENERGY</Cell>
                         </Section>
-                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%', backgroundColor: '#ffcc00', color: 'black' }}>BACK</Button>
+                        <Button onClick={() => setView('home')} style={{ marginTop: '20px', width: '100%' }}>BACK</Button>
                     </div>
-                 ) : view === 'friends' ? (
-                    <div style={{ width: '100%', textAlign: 'center', padding: '10px' }}>
-                        <Headline style={{ color: '#ffcc00' }}>👥 FRIENDS</Headline>
-                        <div style={{ padding: '20px', color: '#ccc' }}>Recruit friends and grow your Unity Fleet!</div>
-                        <Button style={{ width: '100%' }} onClick={() => { navigator.clipboard.writeText("https://t.me/your_bot"); setEventMsg("COPIED!"); }}>INVITE FRIEND</Button>
-                        <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
-                    </div>
-                 ) : view === 'boss' ? (
-                    <div style={{ width: '100%', textAlign: 'center', padding: '10px' }}>
+                )}
+
+                {view === 'boss' && (
+                    <div style={{ textAlign: 'center', padding: '10px' }}>
                         <Headline style={{ color: '#ff3333' }}>💀 BOSS: VORTIGERN</Headline>
-                        <img src="/image/boss_vortigern.jpeg" alt="Boss" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
-                        <Button size="l" onClick={() => setBossHp(h => h - 10000)} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK</Button>
+                        <img src="/image/boss_vortigern.jpeg" style={{ width: '100%', borderRadius: '15px', border: '2px solid #ff3333', margin: '15px 0' }} />
+                        <div style={{ width: '100%', height: '10px', backgroundColor: '#333', borderRadius: '5px', marginBottom: '15px' }}>
+                            <div style={{ width: `${(bossHp / 1000000) * 100}%`, height: '100%', backgroundColor: '#ff3333' }} />
+                        </div>
+                        <Button size="l" onClick={() => setBossHp(h => Math.max(0, h - 10000))} style={{ width: '100%', backgroundColor: '#ff3333' }}>ATTACK</Button>
                         <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
                     </div>
-                 ) : (
-                    <div style={{ width: '100%', textAlign: 'center', overflowY: 'auto', maxHeight: '80vh' }}>
+                )}
+
+                {view === 'info' && (
+                    <div style={{ textAlign: 'center' }}>
                         <Headline style={{ color: '#ffcc00' }}>ℹ️ WIKI</Headline>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', padding: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', padding: '10px', overflowY: 'auto', maxHeight: '70vh' }}>
                             {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15].map(i => (
                                 <div key={i}><img src={`/image/owl_${i}.jpeg`} style={{ width: '100%', borderRadius: '8px' }} /><span style={{ fontSize: '10px' }}>LVL {i}</span></div>
                             ))}
                         </div>
                         <Button onClick={() => setView('home')} style={{ marginTop: '10px', width: '100%' }}>BACK</Button>
                     </div>
-                 )}
-            </>
+                )}
+            </div>
         )}
 
         {eventMsg && (
